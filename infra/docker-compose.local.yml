@@ -1,0 +1,43 @@
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:8
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: test_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
+  # Core API Service
+  core-api:
+    build:
+      context: ../backend/services/core-api
+      dockerfile: Dockerfile
+    container_name: core-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./env/common.local.env
+    depends_on:
+      - mongodb
+      - localstack
+    networks:
+      - app-network
+    volumes:
+      - ../backend/services/core-api:/app
+
+volumes:
+  mongodb_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,15 +1,20 @@
 interface ChatMessageProps {
   message: string;
   sender: "ai" | "user";
+  timestamp?: Date;
 }
 
-export default function ChatMessage({ message, sender }: ChatMessageProps) {
+export default function ChatMessage({
+  message,
+  sender,
+  timestamp,
+}: ChatMessageProps) {
   if (sender === "ai") {
     return (
-      <div className="flex items-start gap-2">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary">
+      <div className="flex items-start gap-3 mb-4 animate-fade-in">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">
           <svg
-            className="h-4 w-4 text-white"
+            className="h-5 w-5 text-white"
             fill="currentColor"
             viewBox="0 0 20 20"
             xmlns="http://www.w3.org/2000/svg"
@@ -21,21 +26,41 @@ export default function ChatMessage({ message, sender }: ChatMessageProps) {
             />
           </svg>
         </div>
-        <div className="rounded-lg bg-primary px-4 py-3 text-white max-w-[80%]">
-          <p>{message}</p>
+        <div className="flex flex-col gap-1 max-w-[75%]">
+          <div className="rounded-2xl rounded-tl-sm bg-primary px-4 py-3 shadow-sm">
+            <p className="text-white text-sm leading-relaxed">{message}</p>
+          </div>
+          {timestamp && (
+            <span className="text-xs text-grey-500 px-1">
+              {timestamp.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-start justify-end gap-2">
-      <div className="rounded-lg bg-grey-200 px-4 py-3 text-black max-w-[80%]">
-        <p>{message}</p>
+    <div className="flex items-start justify-end gap-3 mb-4 animate-fade-in">
+      <div className="flex flex-col gap-1 items-end max-w-[75%]">
+        <div className="rounded-2xl rounded-tr-sm bg-grey-200 px-4 py-3 shadow-sm">
+          <p className="text-black text-sm leading-relaxed">{message}</p>
+        </div>
+        {timestamp && (
+          <span className="text-xs text-grey-500 px-1">
+            {timestamp.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        )}
       </div>
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-grey-300">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-grey-300 shadow-sm">
         <svg
-          className="h-4 w-4 text-black"
+          className="h-5 w-5 text-black"
           fill="currentColor"
           viewBox="0 0 20 20"
           xmlns="http://www.w3.org/2000/svg"

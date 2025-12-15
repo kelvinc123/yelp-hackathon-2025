@@ -195,3 +195,16 @@ p, span, div, a, button, input, textarea, select, label, li {
 .text-grey-500 {
   color: var(--color-grey-500);
 }
+
+/* Loading animation */
+@keyframes loading {
+  0% {
+    transform: scaleX(0);
+  }
+  50% {
+    transform: scaleX(0.7);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}

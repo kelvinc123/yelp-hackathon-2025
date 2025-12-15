@@ -37,24 +37,24 @@ export default function LoadingScreen({
 
     return (
         <div
-        className={`fixed inset-0 z-50 flex items-center justify-center bg-white transition-opacity duration-300 ${
-            isFadingOut ? "opacity-0" : "opacity-100"
-        }`}
+            className={`fixed inset-0 z-50 flex items-center justify-center bg-white transition-opacity duration-300 ${
+                isFadingOut ? "opacity-0" : "opacity-100"
+            }`}
         >
         <div className="flex flex-col items-center gap-4">
             <div className="relative h-24 w-24 animate-pulse">
-            <Image
-                src="/logo.png"
-                alt="YesorNext Logo"
-                fill
-                className="object-contain"
-                priority
-            />
+                <Image
+                    src="/logo.png"
+                    alt="YesorNext Logo"
+                    fill
+                    className="object-contain"
+                    priority
+                />
+                </div>
+                <div className="h-1 w-32 overflow-hidden rounded-full bg-grey-200">
+                <div className="h-full w-full animate-[loading_2s_ease-in-out_infinite] bg-primary origin-left"></div>
+                </div>
             </div>
-            <div className="h-1 w-32 overflow-hidden rounded-full bg-grey-200">
-            <div className="h-full w-full animate-[loading_2s_ease-in-out_infinite] bg-primary origin-left"></div>
-            </div>
-        </div>
         </div>
     );
 }

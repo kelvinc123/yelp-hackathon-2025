@@ -5,12 +5,11 @@ import ModeToggle from "./ModeToggle";
 import CircularAvatar from "./CircularAvatar";
 
 interface TalkInterfaceProps {
-  onBack?: () => void;
-  onModeChange?: (mode: "chat" | "talk") => void;
+    onBack?: () => void;
+    onModeChange?: (mode: "chat" | "talk") => void;
 }
 
 export default function TalkInterface({
-    onBack,
     onModeChange,
     }: TalkInterfaceProps) {
     const [activeMode, setActiveMode] = useState<"chat" | "talk">("talk");

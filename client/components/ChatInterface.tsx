@@ -33,12 +33,6 @@ export default function ChatInterface({
       sender: "ai",
       timestamp: new Date(),
     },
-    {
-      id: "2",
-      text: "Hi, I would like a japanese fusion restaurant near me",
-      sender: "user",
-      timestamp: new Date(),
-    },
   ]);
   const [inputValue, setInputValue] = useState("");
   const [activeMode, setActiveMode] = useState<"chat" | "talk">("chat");
@@ -100,7 +94,7 @@ export default function ChatInterface({
       </div>
 
       {/* Suggestions */}
-      {messages.length <= 2 && (
+      {messages.length <= 1 && (
         <div className="px-6 py-3 border-t border-grey-200 bg-grey-100">
           <div className="flex gap-2 overflow-x-auto max-w-4xl mx-auto">
             {suggestions.map((suggestion, index) => (

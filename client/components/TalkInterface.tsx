@@ -39,91 +39,60 @@ export default function TalkInterface({
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 relative">
-
-        {/* Centered card */}
-        <div className="min-h-screen flex items-center justify-center px-6 py-12">
-            <div
-            className="
-                    w-full max-w-md
-                    rounded-3xl bg-grey-100
-                    px-8 py-10
-                    flex flex-col items-center
-                    min-h-[560px]
-                "
-            >
-            {/* Header (fixed to top) */}
-            <div className="absolute left-0 top-0 w-full pt-10 flex justify-center pointer-events-none">
-                <div className="pointer-events-auto text-center">
-                    <p className="mb-2 text-xl font-bold text-black">
-                        Let&apos;s get started!
-                    </p>
-                    <p className="text-sm text-gray-500">What would you like to eat?</p>
-                </div>
-            </div>
-
-            {/* Center (takes remaining space so it never overlaps header/footer) */}
-            <div className="flex-1 w-full flex flex-col items-center justify-center gap-6">
-                <CircularAvatar variant="microphone" />
-                
-                {/* Status Text */}
-                {isListening ? (
-                    <div className="text-center">
-                        <p className="text-lg font-semibold text-black mb-2">
-                            Listening...
+        <div className="min-h-screen bg-grey-100 relative">
+            {/* Centered card */}
+            <div className="min-h-screen flex items-center justify-center px-6 py-12">
+                <div className="w-full max-w-md rounded-3xl bg-white px-8 py-10 flex flex-col items-center relative">
+                    {/* Header */}
+                    <div className="w-full pt-8 pb-8 text-center">
+                        <p className="mb-2 text-xl font-bold text-black">
+                            Let&apos;s get started!
                         </p>
-                        {transcript && (
-                            <p className="text-sm text-grey-500">{transcript}</p>
+                        <p className="text-sm text-grey-500">What would you like to eat?</p>
+                    </div>
+
+                    {/* Center Content */}
+                    <div className="flex-1 w-full flex flex-col items-center justify-center gap-6 py-8">
+                        {/* Large Circular Avatar - Clickable */}
+                        <button
+                            onClick={isListening ? handleStopListening : handleStartListening}
+                            className="outline-none border-none bg-transparent cursor-pointer active:scale-95 transition-transform"
+                            aria-label={isListening ? "Stop listening" : "Start listening"}
+                        >
+                            <CircularAvatar variant="microphone" />
+                        </button>
+                        
+                        {/* Status Text */}
+                        {isListening ? (
+                            <div className="text-center">
+                                <p className="text-lg font-semibold text-black mb-2">
+                                    Listening...
+                                </p>
+                                {transcript && (
+                                    <p className="text-sm text-grey-500">{transcript}</p>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-grey-500 text-center">
+                                Tap the microphone to start
+                            </p>
                         )}
                     </div>
-                ) : (
-                    <div className="text-center">
-                        <p className="text-sm text-grey-500">
-                            Tap the microphone to start
-                        </p>
-                    </div>
-                )}
 
-                {/* Microphone Button */}
-                <button
-                    onClick={isListening ? handleStopListening : handleStartListening}
-                    className={`flex h-20 w-20 items-center justify-center rounded-full transition-all ${
-                        isListening
-                            ? "bg-primary text-white animate-pulse"
-                            : "bg-grey-200 text-black hover:bg-grey-300"
-                    }`}
-                >
-                    <svg
-                        className="h-10 w-10"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    {/* Footer */}
+                    <div className="w-full flex justify-center pt-8 pb-6">
+                        <ModeToggle
+                            activeMode={activeMode}
+                            onModeChange={(mode) => {
+                                setActiveMode(mode);
+                                if (mode === "chat") {
+                                    onModeChange?.("chat");
+                                }
+                            }}
                         />
-                    </svg>
-                </button>
+                    </div>
+                </div>
             </div>
-
-            {/* Footer */}
-            <div className="w-full flex justify-center absolute left-0 bottom-0 pb-10">
-                <ModeToggle
-                    activeMode={activeMode}
-                    onModeChange={(mode) => {
-                        setActiveMode(mode);
-                        if (mode === "chat") {
-                            onModeChange?.("chat");
-                        }
-                    }}
-                />
-            </div>
-            </div>
-        </div>
         </div>
     );
 }

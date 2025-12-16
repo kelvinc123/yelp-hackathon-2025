@@ -25,7 +25,11 @@ export default function BottomNavigation() {
       label: "Home",
       icon: Home,
       path: "/",
-      active: isActive("/") || pathname === "/chat" || pathname === "/talk" || pathname === "/option",
+      active:
+        isActive("/") ||
+        pathname === "/chat" ||
+        pathname === "/talk" ||
+        pathname === "/option",
     },
     {
       label: "Profile",
@@ -66,4 +70,3 @@ export default function BottomNavigation() {
     </nav>
   );
 }
-

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AppLogo from "./AppLogo";
 import ModeToggle from "./ModeToggle";
+import Image from "next/image";
 
 interface MainScreenProps {
   onModeChange?: (mode: "chat" | "talk") => void;
@@ -52,11 +53,13 @@ export default function MainScreen({ onModeChange }: MainScreenProps) {
             aria-label="Start talking"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
-            <img
+            <Image
               src="/main.png"
               alt="Main"
-              className="w-full h-full object-contain"
+              className="object-contain"
               draggable="false"
+              width={256}
+              height={256}
             />
           </button>
         </div>

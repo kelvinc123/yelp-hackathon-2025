@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import RestaurantSwipeView from "@/components/RestaurantSwipeView";
+import BottomNavigation from "@/components/BottomNavigation";
 
 export default function OptionPage() {
   const router = useRouter();
@@ -19,10 +20,12 @@ export default function OptionPage() {
   };
 
   return (
-    <RestaurantSwipeView
-      onSwipeComplete={handleSwipeComplete}
-      onBack={() => router.push("/talk")}
-    />
+    <>
+      <RestaurantSwipeView
+        onSwipeComplete={handleSwipeComplete}
+        onBack={() => router.push("/talk")}
+      />
+      <BottomNavigation />
+    </>
   );
 }
-

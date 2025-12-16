@@ -74,22 +74,24 @@ export default function RestaurantSwipeView({
   const currentRestaurant = restaurants[currentIndex];
 
   return (
-    <div className="min-h-dvh bg-[#F6F6F6] flex flex-col">
+    <div className="min-h-dvh bg-[#F6F6F6] flex flex-col pb-20">
       {/* Header */}
       <div className="px-6 pt-8 pb-3">
         <div className="flex flex-col items-center gap-2">
-          <div className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-1 text-sm font-semibold shadow-sm">
-            Yes<span className="text-rose-500">or</span>Next
+          <div className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-1 text-sm font-semibold shadow-sm text-black">
+            <span className="text-black">Yes</span>
+            <span className="text-rose-500">or</span>
+            <span className="text-black">Next</span>
           </div>
 
-          <div className="text-sm font-medium text-gray-500">
+          <div className="text-sm font-medium text-black">
             <span className="font-bold text-rose-500">{currentIndex + 1}</span>{" "}
             out of {restaurants.length}
           </div>
 
-          <h1 className="mt-6 text-xl sm:text-xl font-extrabold tracking-tight text-black">
+          <p className="mt-6 text-4xl font-semibold tracking-tight text-black">
             Here is your choice!
-          </h1>
+          </p>
         </div>
       </div>
 
@@ -114,8 +116,8 @@ export default function RestaurantSwipeView({
       </div>
 
       {/* Instructions */}
-      <div className="px-6 pb-6 text-center">
-        <p className="text-sm text-gray-400">
+      <div className="px-6 pb-24 text-center">
+        <p className="text-sm text-black">
           swipe left for next, and swipe right for yes
         </p>
       </div>

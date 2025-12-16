@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import AppLogo from "./AppLogo";
-import CircularAvatar from "./CircularAvatar";
 import ModeToggle from "./ModeToggle";
 
 interface MainScreenProps {
@@ -13,38 +12,59 @@ export default function MainScreen({ onModeChange }: MainScreenProps) {
   const [activeMode, setActiveMode] = useState<"chat" | "talk">("talk");
 
   const handleModeChange = (mode: "chat" | "talk") => {
-    setActiveMode(mode);
-    onModeChange?.(mode);
+    // Only navigate if clicking a different mode
+    if (mode !== activeMode) {
+      setActiveMode(mode);
+      onModeChange?.(mode);
+    }
+  };
+
+  // Handler for clicking the central picture - always goes to Talk
+  const handleCentralImageClick = () => {
+    if (activeMode !== "talk") {
+      setActiveMode("talk");
+    }
+    onModeChange?.("talk");
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-between bg-white px-6 py-12">
-      {/* Logo */}
-      <div className="mt-8">
-        <AppLogo />
-      </div>
-
-      {/* Tagline */}
-      <p className="mt-4 text-center text-base text-black">
-        No overwhelm in lists. AI gives you just one great place at a time.
-      </p>
-
-      {/* Central Avatar */}
-      <div className="my-12 flex flex-col items-center">
-        <CircularAvatar
-          variant={activeMode === "talk" ? "microphone" : "avatar"}
-        />
-        <div className="mt-8 text-center">
-          <p className="mb-2 text-lg font-bold text-black">
-            Let&apos;s get started!
-          </p>
-          <p className="text-base text-black">What would you like eat?</p>
+    <div className="flex min-h-screen items-center justify-center bg-grey-100">
+      <div className="w-full max-w-md h-screen flex flex-col items-center rounded-3xl px-6 pb-8 pt-12 relative">
+        {/* Logo */}
+        <div className="mb-6">
+          <AppLogo />
         </div>
-      </div>
 
-      {/* Mode Toggle */}
-      <div className="mb-8">
-        <ModeToggle activeMode={activeMode} onModeChange={handleModeChange} />
+        {/* Horizontal line */}
+        <div className="w-full max-w-[208px] h-px bg-grey-300 my-6" />
+
+        {/* Tagline */}
+        <p className="text-center text-base text-black mb-8">
+          No overwhelm in lists. AI gives you just one great place at a time.
+        </p>
+
+        {/* Central Avatar (now clickable) */}
+        <div className="flex-1 flex flex-col items-center justify-center w-full my-8">
+          <button
+            type="button"
+            onClick={handleCentralImageClick}
+            className="outline-none border-none bg-transparent cursor-pointer active:scale-95 transition-transform"
+            aria-label="Start talking"
+            style={{ WebkitTapHighlightColor: "transparent" }}
+          >
+            <img
+              src="/main.png"
+              alt="Main"
+              className="w-full h-full object-contain"
+              draggable="false"
+            />
+          </button>
+        </div>
+
+        {/* Mode Toggle */}
+        <div className="mt-auto mb-4 w-full flex items-center justify-center">
+          <ModeToggle activeMode={activeMode} onModeChange={handleModeChange} />
+        </div>
       </div>
     </div>
   );

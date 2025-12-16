@@ -13,6 +13,7 @@ interface Message {
 
 interface ChatInterfaceProps {
   onBack?: () => void;
+  onModeChange?: (mode: "chat" | "talk") => void;
 }
 
 const suggestions = [
@@ -21,7 +22,10 @@ const suggestions = [
   "Vegetarian options",
 ];
 
-export default function ChatInterface({ onBack }: ChatInterfaceProps) {
+export default function ChatInterface({
+  onBack,
+  onModeChange,
+}: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -157,8 +161,8 @@ export default function ChatInterface({ onBack }: ChatInterfaceProps) {
             activeMode={activeMode}
             onModeChange={(mode) => {
               setActiveMode(mode);
-              if (mode === "talk" && onBack) {
-                onBack();
+              if (mode === "talk") {
+                onModeChange?.("talk");
               }
             }}
           />

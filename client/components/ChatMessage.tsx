@@ -13,6 +13,7 @@ interface Restaurant {
   vibes: string[];
   address?: string;
   phone?: string;
+  url?: string;
 }
 
 interface ChatMessageProps {

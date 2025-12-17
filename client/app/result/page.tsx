@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Calendar, MapPin, Map } from "lucide-react";
+import { MapPin, Map, Share2 } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
 
 interface Restaurant {
@@ -16,6 +16,7 @@ interface Restaurant {
   imageUrl?: string;
   vibes: string[];
   address?: string;
+  phone?: string;
 }
 
 export default function ResultPage() {
@@ -26,6 +27,7 @@ export default function ResultPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [choice, setChoice] = useState<"reserve" | "directions" | null>(null);
   const [showDirectionsChoice, setShowDirectionsChoice] = useState(false);
+  const [reservationTime, setReservationTime] = useState<string | null>(null);
 
   useEffect(() => {
     const key = sessionId ? `yon-result:${sessionId}` : "yon-result:temp";
@@ -40,12 +42,13 @@ export default function ResultPage() {
       if (data.choice === "reserve" || data.choice === "directions") {
         setChoice(data.choice);
       }
+      if (typeof data.reservationTime === "string") {
+        setReservationTime(data.reservationTime);
+      }
     } catch {
       // ignore parse errors
     }
   }, [sessionId]);
-
-  const reservationDate = "Thursday, Dec 15, 2025 4.00 PM";
 
   return (
     <div className="min-h-screen bg-grey-100 pb-20">
@@ -114,13 +117,21 @@ export default function ResultPage() {
 
         {/* Confirmation */}
         <div className="px-6 pb-6">
-          {choice === "reserve" && (
+          {choice === "reserve" && restaurant && reservationTime && (
             <div className="text-center">
               <h2 className="text-xl font-bold text-black mb-2">
-                Your reservation details
+                Your plan is set!
               </h2>
               <p className="text-base font-semibold text-primary">
-                {reservationDate}
+                You&apos;re going to {restaurant.name} on{" "}
+                {new Date(reservationTime).toLocaleString([], {
+                  weekday: "short",
+                  month: "short",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                .
               </p>
             </div>
           )}
@@ -138,20 +149,68 @@ export default function ResultPage() {
 
         {/* Action Buttons */}
         <div className="px-6 pb-6 space-y-3">
-          {choice === "reserve" && (
+          {/* Add to calendar when they made a reservation */}
+          {choice === "reserve" && restaurant && reservationTime && (
             <button
               onClick={() => {
-                // Simple add-to-calendar placeholder; hook into real calendar later
-                alert("Reservation added to your calendar (demo).");
+                const title = encodeURIComponent(`Visit to ${restaurant.name}`);
+                const detailsParts = [
+                  `Time: ${new Date(reservationTime).toLocaleString()}`,
+                  restaurant.address ? `Address: ${restaurant.address}` : "",
+                  restaurant.phone ? `Phone: ${restaurant.phone}` : "",
+                ].filter(Boolean);
+                const details = encodeURIComponent(detailsParts.join("\n"));
+                const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}`;
+                window.open(url, "_blank");
               }}
               className="w-full rounded-full bg-white border-2 border-black text-black py-3 font-semibold hover:bg-grey-50 transition-colors flex items-center justify-center gap-2"
             >
-              <Calendar className="h-5 w-5" />
-              Add to calendar
+              Add to Google Calendar
             </button>
           )}
 
-          {choice === "directions" && restaurant && (
+          {/* Share with friends (custom message) */}
+          {restaurant && (
+            <button
+              onClick={() => {
+                const whenText =
+                  choice === "reserve" && reservationTime
+                    ? `Time: ${new Date(reservationTime).toLocaleString([], {
+                        weekday: "short",
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}`
+                    : null;
+
+                const lines = [
+                  `Hey, want to meet at ${restaurant.name}?`,
+                  restaurant.address ? `Address: ${restaurant.address}` : "",
+                  whenText || "",
+                  restaurant.phone ? `Phone: ${restaurant.phone}` : "",
+                ].filter(Boolean);
+
+                const text = lines.join("\n");
+                if (navigator.share) {
+                  navigator.share({
+                    title: restaurant.name,
+                    text,
+                  });
+                } else if (navigator.clipboard) {
+                  navigator.clipboard.writeText(text);
+                  alert("Restaurant info copied to clipboard!");
+                }
+              }}
+              className="w-full rounded-full bg-grey-200 text-black py-3 font-semibold hover:bg-grey-300 transition-colors flex items-center justify-center gap-2"
+            >
+              <Share2 className="h-5 w-5" />
+              Share with friends
+            </button>
+          )}
+
+          {/* Directions buttons (available for both reserve + directions flows) */}
+          {choice && restaurant && (
             <>
               {!showDirectionsChoice ? (
                 <button

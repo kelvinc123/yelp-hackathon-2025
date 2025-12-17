@@ -18,6 +18,7 @@ interface Restaurant {
   vibes: string[];
   address?: string;
   phone?: string;
+  url?: string;
 }
 
 interface Message {
@@ -58,6 +59,9 @@ export default function ChatInterface({}: ChatInterfaceProps) {
   const [awaitingChoice, setAwaitingChoice] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
+  const [isReservationFlow, setIsReservationFlow] = useState(false);
+  const [reservationTime, setReservationTime] = useState("");
+  const [reservationConfirmed, setReservationConfirmed] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(
     null
@@ -209,6 +213,9 @@ export default function ChatInterface({}: ChatInterfaceProps) {
           setSelectedRestaurant(data.restaurant);
         }
         setAwaitingChoice(true);
+        setIsReservationFlow(false);
+        setReservationTime("");
+        setReservationConfirmed(false);
       }
 
       // Add AI response message
@@ -291,13 +298,20 @@ export default function ChatInterface({}: ChatInterfaceProps) {
     setMessages((prev) => [...prev, userMessage]);
     setAwaitingChoice(false);
 
-    // For main actions, go straight to result page with the chosen restaurant
-    if (choice === "reserve" || choice === "directions") {
+    // Stay in chat for reservation flow
+    if (choice === "reserve") {
+      setIsReservationFlow(true);
+      setReservationTime("");
+      setReservationConfirmed(false);
+      return;
+    }
+
+    // For directions, go to result page with the chosen restaurant
+    if (choice === "directions") {
       const payload = {
         restaurant: selectedRestaurant,
         choice,
       };
-      // Persist minimal data for result page
       if (sessionId) {
         sessionStorage.setItem(
           `yon-result:${sessionId}`,
@@ -435,6 +449,119 @@ export default function ChatInterface({}: ChatInterfaceProps) {
               >
                 Something else
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Reservation flow UI (stays in chat) */}
+        {isReservationFlow && selectedRestaurant && (
+          <div className="px-6 pt-3 pb-2 border-t border-grey-100 bg-white">
+            <div className="max-w-4xl mx-auto space-y-2">
+              <p className="text-sm font-semibold text-black">
+                When are you going to {selectedRestaurant.name}?
+              </p>
+              <input
+                type="datetime-local"
+                value={reservationTime}
+                onChange={(e) => {
+                  setReservationTime(e.target.value);
+                  setReservationConfirmed(false);
+                }}
+                className="w-full rounded-full border border-grey-300 px-4 py-2 text-sm text-black bg-white"
+              />
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={() => {
+                    if (!reservationTime) return;
+                    setReservationConfirmed(true);
+                    const when = new Date(reservationTime).toLocaleString([], {
+                      weekday: "short",
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    const confirmMessage: Message = {
+                      id: Date.now().toString(),
+                      text: `Got it, you're heading to ${selectedRestaurant.name} on ${when}.`,
+                      sender: "ai",
+                      timestamp: new Date(),
+                    };
+                    setMessages((prev) => [...prev, confirmMessage]);
+                  }}
+                  disabled={!reservationTime}
+                  className="flex-1 rounded-full bg-primary text-white py-2 text-sm font-semibold disabled:bg-grey-300 disabled:text-grey-600"
+                >
+                  Confirm time
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      reservationConfirmed &&
+                      reservationTime &&
+                      selectedRestaurant
+                    ) {
+                      const payload = {
+                        restaurant: selectedRestaurant,
+                        choice: "reserve" as const,
+                        reservationTime,
+                      };
+                      if (sessionId) {
+                        sessionStorage.setItem(
+                          `yon-result:${sessionId}`,
+                          JSON.stringify(payload)
+                        );
+                        router.push(`/result?sessionId=${sessionId}`);
+                      } else {
+                        sessionStorage.setItem(
+                          `yon-result:temp`,
+                          JSON.stringify(payload)
+                        );
+                        router.push("/result");
+                      }
+                    }
+                    setIsReservationFlow(false);
+                    setReservationTime("");
+                    setReservationConfirmed(false);
+                  }}
+                  className="flex-1 rounded-full bg-grey-200 text-black py-2 text-sm font-semibold"
+                >
+                  Done
+                </button>
+              </div>
+              {reservationConfirmed && reservationTime && (
+                <p className="text-xs text-grey-600">
+                  Saved for{" "}
+                  {new Date(reservationTime).toLocaleString([], {
+                    weekday: "short",
+                    month: "short",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  .
+                </p>
+              )}
+              <div className="flex gap-2 pt-1">
+                {selectedRestaurant.url && (
+                  <a
+                    href={selectedRestaurant.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 inline-flex items-center justify-center rounded-full bg-black text-white py-2 text-xs font-semibold hover:opacity-90"
+                  >
+                    Book on Yelp
+                  </a>
+                )}
+                {selectedRestaurant.phone && (
+                  <a
+                    href={`tel:${selectedRestaurant.phone}`}
+                    className="flex-1 inline-flex items-center justify-center rounded-full bg-white border border-black text-black py-2 text-xs font-semibold hover:bg-grey-50"
+                  >
+                    Call to book
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )}

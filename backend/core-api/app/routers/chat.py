@@ -32,6 +32,7 @@ class Restaurant(BaseModel):
     vibes: list[str]
     address: Optional[str] = None
     phone: Optional[str] = None
+    url: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -230,6 +231,7 @@ async def chat(request: ChatRequest):
                     details.get("display_phone") or details.get("phone")
                     if request.action == "yes" else None
                 ),
+                url=details.get("url"),
             )
     
     session_id = request.sessionId or str(uuid.uuid4())

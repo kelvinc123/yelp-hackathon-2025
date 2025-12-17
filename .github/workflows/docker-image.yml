@@ -31,7 +31,7 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        docker-compose -f infra/docker-compose.local.yml build
+        docker compose -f infra/docker-compose.local.yml build
         docker tag core-api us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-prod:latest
         docker push us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-prod:latest
 

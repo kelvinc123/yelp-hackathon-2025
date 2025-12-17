@@ -172,6 +172,107 @@ async def process_text_prompt(
         )
 
 
+
+@router.post("/prompt/textttt")
+async def process_text_promptsss(
+    request: TextPromptRequest,
+    db: Client = Depends(get_database)
+):
+    """
+    Process user text input and return restaurant recommendations.
+    
+    This endpoint accepts text prompts like:
+    - "I want Italian food near me"
+    - "Something spicy under $30"
+    - "Date night restaurant"
+    """
+    try:
+        logger.info(f"Processing text prompt for user {request.user_id}: {request.text}")
+        
+        yelp_service = get_yelp_ai_service()
+        user_query = "\n\nUser query: " + request.text
+
+        preference_context = build_user_preference_context(db, request.user_id)
+        enhanced_query = preference_context + user_query
+        
+        logger.info(f"Enhanced query with preferences: {enhanced_query}")
+
+        yelp_response = yelp_service.chat(
+            query=enhanced_query,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            chat_id=request.chat_id
+        )
+        
+        businesses = yelp_service.extract_businesses_from_response(yelp_response)
+        
+        if request.chat_id:
+            result = db.table("conversations").select("id").eq("chat_id", request.chat_id).execute()
+            if result.data and len(result.data) > 0:
+                conversation_id = result.data[0]["id"]
+            else:
+                conversation_id = str(uuid.uuid4())
+                conversation_data = {
+                    "id": conversation_id,
+                    "user_id": request.user_id,
+                    "chat_id": yelp_response.get("chat_id"),
+                    "created_at": datetime.utcnow().isoformat()
+                }
+                db.table("conversations").insert(conversation_data).execute()
+        else:
+            conversation_id = str(uuid.uuid4())
+            conversation_data = {
+                "id": conversation_id,
+                "user_id": request.user_id,
+                "chat_id": yelp_response.get("chat_id"),
+                "created_at": datetime.utcnow().isoformat()
+            }
+            db.table("conversations").insert(conversation_data).execute()
+        
+        prompt_id = str(uuid.uuid4())
+        
+        prompt_data = {
+            "id": prompt_id,
+            "conversation_id": conversation_id,
+            "user_id": request.user_id,
+            "prompt_text": request.text,
+            "prompt_type": "text",
+            "latitude": request.latitude,
+            "longitude": request.longitude,
+            "yelp_response": yelp_response,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        db.table("prompts").insert(prompt_data).execute()
+
+        for business in businesses:
+            restaurant_data = {
+                "id": str(uuid.uuid4()),
+                "prompt_id": prompt_id,
+                "user_id": request.user_id,
+                **business,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            db.table("restaurants_discovered").insert(restaurant_data).execute()
+        
+        logger.info(f"Found {len(businesses)} restaurants for user {request.user_id}")
+        
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "chat_id": yelp_response.get("chat_id"),
+            "ai_response": yelp_response["response"]["text"],
+            "restaurants": businesses,
+            "total_results": len(businesses)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing text prompt: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 @router.post("/prompt/voice")
 async def process_voice_input(
     request: VoiceInputRequest,

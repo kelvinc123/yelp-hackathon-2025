@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MapPin, Map, Share2 } from "lucide-react";
+import { MapPin, Map, Share2, Image as ImageIcon } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
 
 interface Restaurant {
@@ -28,6 +28,7 @@ export default function ResultPage() {
   const [choice, setChoice] = useState<"reserve" | "directions" | null>(null);
   const [showDirectionsChoice, setShowDirectionsChoice] = useState(false);
   const [reservationTime, setReservationTime] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const key = sessionId ? `yon-result:${sessionId}` : "yon-result:temp";
@@ -37,7 +38,13 @@ export default function ResultPage() {
     try {
       const data = JSON.parse(raw);
       if (data.restaurant) {
+        console.log("Restaurant data loaded:", {
+          name: data.restaurant.name,
+          imageUrl: data.restaurant.imageUrl,
+          hasImageUrl: !!data.restaurant.imageUrl,
+        });
         setRestaurant(data.restaurant);
+        setImageError(false); // Reset image error when restaurant changes
       }
       if (data.choice === "reserve" || data.choice === "directions") {
         setChoice(data.choice);
@@ -45,8 +52,8 @@ export default function ResultPage() {
       if (typeof data.reservationTime === "string") {
         setReservationTime(data.reservationTime);
       }
-    } catch {
-      // ignore parse errors
+    } catch (error) {
+      console.error("Error parsing sessionStorage data:", error);
     }
   }, [sessionId]);
 
@@ -66,11 +73,30 @@ export default function ResultPage() {
           <div className="px-6 pb-6">
             <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
               {/* Image */}
-              <img
-                src={restaurant.imageUrl}
-                alt={restaurant.name}
-                className="w-full h-48 object-cover"
-              />
+              <div className="relative w-full h-48 bg-grey-200 flex items-center justify-center overflow-hidden">
+                {restaurant.imageUrl && !imageError ? (
+                  <img
+                    src={restaurant.imageUrl}
+                    alt={restaurant.name}
+                    className="w-full h-full object-cover"
+                    onError={() => {
+                      console.error(
+                        "Image failed to load:",
+                        restaurant.imageUrl
+                      );
+                      setImageError(true);
+                    }}
+                    onLoad={() => {
+                      console.log(
+                        "Image loaded successfully:",
+                        restaurant.imageUrl
+                      );
+                    }}
+                  />
+                ) : (
+                  <ImageIcon className="h-14 w-14 text-grey-400" />
+                )}
+              </div>
 
               {/* Content */}
               <div className="px-5 pt-4 pb-5">

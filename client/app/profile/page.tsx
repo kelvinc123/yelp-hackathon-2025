@@ -36,7 +36,7 @@ const SAVED_RESTAURANTS: SavedRestaurant[] = [
     vibes: ["Cozy", "Comfort food", "Casual"],
     savedDate: "2024-12-10T18:30:00.000Z",
     imageUrl:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80",
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=400&q=80",
   },
   {
     id: "2",
@@ -49,7 +49,7 @@ const SAVED_RESTAURANTS: SavedRestaurant[] = [
     vibes: ["Late-night", "Noodles", "Casual"],
     savedDate: "2024-12-11T19:15:00.000Z",
     imageUrl:
-      "https://images.unsplash.com/photo-1523983303491-180b01c3e770?auto=format&fit=crop&w=400&q=80",
+      "https://images.unsplash.com/photo-1526318896980-cf78c088247c?auto=format&fit=crop&w=400&q=80",
   },
   {
     id: "3",
@@ -63,7 +63,7 @@ const SAVED_RESTAURANTS: SavedRestaurant[] = [
     vibes: ["Cozy", "Late-night", "Soulful"],
     savedDate: "2024-12-12T21:45:00.000Z",
     imageUrl:
-      "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=400&q=80",
+      "https://images.unsplash.com/photo-1526318896980-cf78c088247c?auto=format&fit=crop&w=400&q=80",
   },
 ];
 

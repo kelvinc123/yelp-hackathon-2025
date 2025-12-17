@@ -41,7 +41,7 @@ jobs:
           --image "us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-${{ env.MY_PROJECT_ENV  }}:latest" \
           --platform managed \
           --region us-west1 \
-          --port 8080 \
+          --port 8000 \
           --memory 512Mi \
           --cpu 1 \
           --max-instances 1 \

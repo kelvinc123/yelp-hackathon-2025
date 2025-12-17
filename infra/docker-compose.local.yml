@@ -2,6 +2,7 @@
 services:
   # Core API Service
   core-api:
+    image: us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-prod:latest
     build:
       context: ../backend/core-api
       dockerfile: Dockerfile

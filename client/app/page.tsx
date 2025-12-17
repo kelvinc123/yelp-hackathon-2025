@@ -73,57 +73,32 @@ export default function Home() {
   }
 
   return (
-    <>
-      {currentReservation && (
-        <div className="w-full bg-yellow-50 border-b border-yellow-200 px-6 py-3">
-          <div className="max-w-md mx-auto flex flex-col gap-1">
-            <p className="text-xs font-semibold text-yellow-800 uppercase">
-              You have a plan
-            </p>
-            <p className="text-sm text-black">
-              {`Meeting at ${currentReservation.restaurantName} on `}
-              {new Date(currentReservation.reservationTime).toLocaleString([], {
-                month: "short",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              .
-            </p>
-            <div className="flex gap-2 mt-1">
-              <button
-                onClick={() => {
-                  if (currentReservation.sessionId) {
-                    router.push(
-                      `/result?sessionId=${currentReservation.sessionId}`
-                    );
-                  } else {
-                    router.push("/result");
-                  }
-                }}
-                className="flex-1 rounded-full bg-primary text-white py-1.5 text-xs font-semibold hover:opacity-90"
-              >
-                View details
-              </button>
-              <button
-                onClick={() => router.push("/chat")}
-                className="flex-1 rounded-full bg-white border border-grey-300 text-black py-1.5 text-xs font-semibold hover:bg-grey-50"
-              >
-                Find another place
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <MainScreen
-        onModeChange={(newMode) => {
-          if (newMode === "chat") {
-            router.push("/chat");
-          } else if (newMode === "talk") {
-            router.push("/talk");
-          }
-        }}
-      />
-    </>
+    <MainScreen
+      onModeChange={(newMode) => {
+        if (newMode === "chat") {
+          router.push("/chat");
+        } else if (newMode === "talk") {
+          router.push("/talk");
+        }
+      }}
+      reservation={
+        currentReservation
+          ? {
+              restaurantName: currentReservation.restaurantName,
+              reservationTime: currentReservation.reservationTime,
+              onView: () => {
+                if (currentReservation.sessionId) {
+                  router.push(
+                    `/result?sessionId=${currentReservation.sessionId}`
+                  );
+                } else {
+                  router.push("/result");
+                }
+              },
+              onFindAnother: () => router.push("/chat"),
+            }
+          : null
+      }
+    />
   );
 }

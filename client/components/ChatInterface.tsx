@@ -55,6 +55,9 @@ export default function ChatInterface({}: ChatInterfaceProps) {
   const [savedRestaurants, setSavedRestaurants] = useState<Set<string>>(
     new Set()
   );
+  const [awaitingChoice, setAwaitingChoice] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] =
+    useState<Restaurant | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(
     null
@@ -200,13 +203,22 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       if (data.chatId) setChatId(data.chatId);
       if (data.sessionId) setSessionId(data.sessionId);
 
+      // When user confirms "Yes", keep details internally but don't show the card yet
+      if (action === "yes") {
+        if (data.restaurant) {
+          setSelectedRestaurant(data.restaurant);
+        }
+        setAwaitingChoice(true);
+      }
+
       // Add AI response message
       const aiMessage: Message = {
         id: Date.now().toString(),
         text: data.message || "",
         sender: "ai",
         timestamp: new Date(),
-        restaurant: data.restaurant || undefined,
+        // Hide the card while we're asking what they want to do (reserve, directions, etc.)
+        restaurant: action === "yes" ? undefined : data.restaurant || undefined,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -257,6 +269,47 @@ export default function ChatInterface({}: ChatInterfaceProps) {
 
     // Send action to Yelp AI
     await sendToYelpAI("", action, restaurantId);
+  };
+
+  const handleChoice = (choice: "reserve" | "directions" | "somethingElse") => {
+    if (!selectedRestaurant) return;
+
+    const choiceText =
+      choice === "reserve"
+        ? "I'd like to make a reservation."
+        : choice === "directions"
+        ? "I'd like to get directions."
+        : "I'd like something else.";
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: choiceText,
+      sender: "user",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setAwaitingChoice(false);
+
+    // For main actions, go straight to result page with the chosen restaurant
+    if (choice === "reserve" || choice === "directions") {
+      const payload = {
+        restaurant: selectedRestaurant,
+        choice,
+      };
+      // Persist minimal data for result page
+      if (sessionId) {
+        sessionStorage.setItem(
+          `yon-result:${sessionId}`,
+          JSON.stringify(payload)
+        );
+        router.push(`/result?sessionId=${sessionId}`);
+      } else {
+        sessionStorage.setItem(`yon-result:temp`, JSON.stringify(payload));
+        router.push("/result");
+      }
+      return;
+    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -360,6 +413,32 @@ export default function ChatInterface({}: ChatInterfaceProps) {
 
       {/* Input Area */}
       <div className="fixed left-0 right-0 bottom-[80px] bg-white border-t border-grey-200 z-40">
+        {/* Quick choice buttons after user says "Yes" */}
+        {awaitingChoice && selectedRestaurant && (
+          <div className="px-6 pt-3 pb-2">
+            <div className="flex gap-2 overflow-x-auto max-w-4xl mx-auto">
+              <button
+                onClick={() => handleChoice("reserve")}
+                className="flex-shrink-0 rounded-full bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-colors whitespace-nowrap"
+              >
+                Make reservation
+              </button>
+              <button
+                onClick={() => handleChoice("directions")}
+                className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-4 py-2 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
+              >
+                Get directions
+              </button>
+              <button
+                onClick={() => handleChoice("somethingElse")}
+                className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-4 py-2 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
+              >
+                Something else
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Suggestions */}
         {messages.length <= 1 && (
           <div className="px-6 pt-3 pb-2">

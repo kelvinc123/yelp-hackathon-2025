@@ -27,6 +27,7 @@ interface Message {
   sender: "ai" | "user";
   timestamp?: Date;
   restaurant?: Restaurant;
+  restaurants?: Restaurant[]; // For swipeable options
 }
 
 interface ChatInterfaceProps {
@@ -226,6 +227,11 @@ export default function ChatInterface({}: ChatInterfaceProps) {
         timestamp: new Date(),
         // Hide the card while we're asking what they want to do (reserve, directions, etc.)
         restaurant: action === "yes" ? undefined : data.restaurant || undefined,
+        // Include restaurants array for swipeable options (only for new queries, not yes/next)
+        restaurants:
+          action === undefined && data.restaurants
+            ? data.restaurants
+            : undefined,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -388,7 +394,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 pb-56">
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-56">
         <div className="max-w-4xl mx-auto">
           {messages.map((message) => {
             const restaurantId = message.restaurant?.id;
@@ -399,15 +405,52 @@ export default function ChatInterface({}: ChatInterfaceProps) {
                 sender={message.sender}
                 timestamp={message.timestamp}
                 restaurant={message.restaurant}
+                restaurants={message.restaurants}
                 onRestaurantAction={handleRestaurantAction}
                 saved={
-                  restaurantId ? savedRestaurants.has(restaurantId) : false
+                  message.restaurants
+                    ? savedRestaurants
+                    : restaurantId
+                    ? savedRestaurants.has(restaurantId)
+                    : false
                 }
                 onHeartToggle={
-                  restaurantId
+                  restaurantId && !message.restaurants
                     ? (isSaved) => handleHeartToggle(restaurantId, isSaved)
                     : undefined
                 }
+                onHeartToggleMultiple={
+                  message.restaurants
+                    ? (restaurantId, isSaved) =>
+                        handleHeartToggle(restaurantId, isSaved)
+                    : undefined
+                }
+                onSwipeRight={async (restaurant) => {
+                  // User swiped right = yes = show options
+                  if (restaurant) {
+                    setSelectedRestaurant(restaurant);
+                    setAwaitingChoice(true);
+                    setIsReservationFlow(false);
+                    setReservationTime("");
+                    setReservationConfirmed(false);
+
+                    // Add user action message
+                    const actionMessage: Message = {
+                      id: Date.now().toString(),
+                      text: "Yes",
+                      sender: "user",
+                      timestamp: new Date(),
+                    };
+                    setMessages((prev) => [...prev, actionMessage]);
+
+                    // Send yes action to backend
+                    await sendToYelpAI("", "yes", restaurant.id);
+                  }
+                }}
+                onSwipeLeft={() => {
+                  // Swipe left = move to back (handled by RestaurantCardStack)
+                  // No need to call backend, just move to next card
+                }}
               />
             );
           })}

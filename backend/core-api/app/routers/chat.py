@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from typing import Optional
 import requests
 import math
-import re
 import uuid
 from app.services.yelp_ai import YelpAIService
 
@@ -62,36 +61,6 @@ def pick_one_business(yelp_json: dict):
     for entity in entities:
         businesses.extend(entity.get("businesses", []))
     return businesses[0] if businesses else None
-
-
-def extract_why(yelp_json: dict, business_id: str) -> str:
-    """Extract the 'why' summary for a specific business"""
-    text = yelp_json.get("response", {}).get("text", "")
-    tags = yelp_json.get("response", {}).get("tags", [])
-    
-    idx = -1
-    for i, tag in enumerate(tags):
-        if tag.get("tag_type") == "business" and tag.get("meta", {}).get("business_id") == business_id:
-            idx = i
-            break
-    
-    if idx == -1:
-        return text[:140].strip()
-    
-    start = tags[idx].get("end", 0)
-    next_biz = None
-    for tag in tags[idx + 1:]:
-        if tag.get("tag_type") == "business":
-            next_biz = tag
-            break
-    
-    end = next_biz.get("start") if next_biz else min(len(text), start + 220)
-    summary = text[start:end]
-    # Replace multiple spaces with single space
-    summary = re.sub(r'\s+', ' ', summary).strip()
-    # Remove leading dashes/colons
-    summary = summary.lstrip("-–—: ").strip()
-    return summary
 
 
 @router.post("", response_model=ChatResponse)
@@ -198,7 +167,9 @@ async def chat(request: ChatRequest):
             else:
                 time = "Check hours"
             
-            summary = extract_why(yelp_json, business_id_to_fetch)
+            # Get ai_insight from business summaries
+            summaries = biz.get("summaries", {})
+            summary = summaries.get("short") if summaries else None
             if not summary:
                 summary = "Great match for your vibe."
             

@@ -146,20 +146,20 @@ export default function RestaurantCardDisplay({
             {/* Action buttons */}
             {(onYes || onNext) && (
                 <div className="mt-4 flex gap-3">
-                {onYes && (
-                    <button
-                    onClick={onYes}
-                    className="flex-1 rounded-full bg-primary text-white px-4 py-2 font-semibold hover:opacity-90 transition-opacity"
-                    >
-                    Yes
-                    </button>
-                )}
                 {onNext && (
                     <button
                     onClick={onNext}
                     className="flex-1 rounded-full border-2 border-black text-black px-4 py-2 font-semibold hover:bg-grey-100 transition-colors"
                     >
                     Next
+                    </button>
+                )}
+                {onYes && (
+                    <button
+                    onClick={onYes}
+                    className="flex-1 rounded-full bg-primary text-white px-4 py-2 font-semibold hover:opacity-90 transition-opacity"
+                    >
+                    Yes
                     </button>
                 )}
                 </div>

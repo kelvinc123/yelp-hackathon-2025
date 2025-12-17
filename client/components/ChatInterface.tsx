@@ -222,8 +222,8 @@ export default function ChatInterface({}: ChatInterfaceProps) {
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">
                 <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               </div>
-              <div className="rounded-2xl rounded-tl-sm bg-grey-200 px-4 py-3">
-                <p className="text-grey-500 text-sm">Thinking...</p>
+              <div className="rounded-2xl rounded-tl-sm bg-primary px-4 py-3">
+                <p className="text-white text-sm">Thinking...</p>
               </div>
             </div>
           )}
@@ -231,9 +231,9 @@ export default function ChatInterface({}: ChatInterfaceProps) {
         </div>
       </div>
 
-      {/* Input Area - Fixed above bottom navigation */}
+      {/* Input Area */}
       <div className="fixed left-0 right-0 bottom-[80px] bg-white border-t border-grey-200 z-40">
-        {/* Suggestions - Above input */}
+        {/* Suggestions */}
         {messages.length <= 1 && (
           <div className="px-6 pt-3 pb-2">
             <div className="flex gap-2 overflow-x-auto max-w-4xl mx-auto">

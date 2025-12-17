@@ -94,7 +94,6 @@ async def process_text_prompt(
         enhanced_query = preference_context + user_query
         
         logger.info(f"Enhanced query with preferences: {enhanced_query}")
-        
         yelp_response = yelp_service.chat(
             query=enhanced_query,
             latitude=request.latitude,
@@ -310,15 +309,15 @@ async def restaurants_discovered(
                 "message": "No restaurants discovered yet"
             }
         
-        swiped_restaurant_ids_result = db.table("user_swipes").select("restaurant_id").eq("user_id", user_id).execute()
+        swiped_result = db.table("user_swipes").select("yelp_business_id").eq("user_id", user_id).execute()
 
-        swiped_ids = set()
-        if swiped_restaurant_ids_result.data:
-            swiped_ids = {swipe["restaurant_id"] for swipe in swiped_restaurant_ids_result.data}
+        swiped_business_ids = set()
+        if swiped_result.data:
+            swiped_business_ids = {swipe["yelp_business_id"] for swipe in swiped_result.data}
         
         unswiped_restaurants = [
             restaurant for restaurant in all_discovered.data 
-            if restaurant["id"] not in swiped_ids
+            if restaurant["yelp_business_id"] not in swiped_business_ids
         ]
         
         unswiped_restaurants = unswiped_restaurants[:limit]
@@ -330,7 +329,7 @@ async def restaurants_discovered(
             "restaurants": unswiped_restaurants,
             "total": len(unswiped_restaurants),
             "total_discovered": len(all_discovered.data),
-            "total_swiped": len(swiped_ids)
+            "total_swiped": len(swiped_business_ids)
         }
         
     except HTTPException:

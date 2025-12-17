@@ -31,14 +31,14 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        IMAGE_URI="us-west1-docker.pkg.dev/yes-or-next/yes-or-next-image/yes-or-next-project-${{ env.MY_PROJECT_ENV  }}:latest"
+        IMAGE_URI="us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-${{ env.MY_PROJECT_ENV  }}:latest"
         cd backend/core-api && docker build -t "$IMAGE_URI" .
         docker push "$IMAGE_URI"
 
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy my-service-${{ env.MY_PROJECT_ENV  }}  \
-          --image "us-west1-docker.pkg.dev/yes-or-next/yes-or-next-image/yes-or-next-project-${{ env.MY_PROJECT_ENV  }}:latest" \
+          --image "us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-${{ env.MY_PROJECT_ENV  }}:latest" \
           --platform managed \
           --region us-west1 \
           --port 8080 \

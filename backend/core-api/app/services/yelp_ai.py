@@ -47,6 +47,13 @@ class YelpAIService:
             json=payload,
             timeout=30
         )
+        
+        # Handle rate limit errors gracefully
+        if response.status_code == 429:
+            raise requests.exceptions.HTTPError(
+                f"429 Client Error: Rate limit exceeded. Please try again in a moment."
+            )
+        
         response.raise_for_status()
         
         return response.json()

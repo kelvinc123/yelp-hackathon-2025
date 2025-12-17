@@ -2,8 +2,9 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { MapPin, Map, Share2, Image as ImageIcon } from "lucide-react";
+import { MapPin, Map, Share2 } from "lucide-react";
 import BottomNavigation from "@/components/BottomNavigation";
+import RestaurantCard from "@/components/RestaurantCard";
 
 interface Restaurant {
   id: string;
@@ -17,18 +18,27 @@ interface Restaurant {
   vibes: string[];
   address?: string;
   phone?: string;
+  url?: string;
 }
 
 export default function ResultPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId");
+  const urlMode = searchParams.get("mode"); // optional
+  // Fallback: if talk session data exists in storage, assume talk mode
+  const storedTalk = sessionId
+    ? sessionStorage.getItem(`yon-talk:${sessionId}`)
+    : null;
+  const mode = urlMode || (storedTalk ? "talk" : null);
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [choice, setChoice] = useState<"reserve" | "directions" | null>(null);
+  const [choice, setChoice] = useState<"reserve" | "directions" | "yes" | null>(
+    null
+  );
   const [showDirectionsChoice, setShowDirectionsChoice] = useState(false);
   const [reservationTime, setReservationTime] = useState<string | null>(null);
-  const [imageError, setImageError] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const key = sessionId ? `yon-result:${sessionId}` : "yon-result:temp";
@@ -38,13 +48,7 @@ export default function ResultPage() {
     try {
       const data = JSON.parse(raw);
       if (data.restaurant) {
-        console.log("Restaurant data loaded:", {
-          name: data.restaurant.name,
-          imageUrl: data.restaurant.imageUrl,
-          hasImageUrl: !!data.restaurant.imageUrl,
-        });
         setRestaurant(data.restaurant);
-        setImageError(false); // Reset image error when restaurant changes
       }
       if (data.choice === "reserve" || data.choice === "directions") {
         setChoice(data.choice);
@@ -55,112 +59,256 @@ export default function ResultPage() {
     } catch (error) {
       console.error("Error parsing sessionStorage data:", error);
     }
-  }, [sessionId]);
+
+    // Check if we have talk data to determine mode
+    if (!mode && sessionId) {
+      const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
+      if (talkData) {
+        // We're in talk mode
+      }
+    }
+  }, [sessionId, mode]);
+
+  const handleSwipeRight = async (restaurant: Restaurant) => {
+    // Swipe right = Yes = Confirm and continue conversation in convo transcript page
+    // Check if we're in talk mode (from URL or session storage)
+    const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
+    const isTalkMode = mode === "talk" || !!talkData;
+
+    if (isTalkMode && talkData) {
+      // For talk mode, try to call backend with yes action
+      try {
+        const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        const fd = new FormData();
+        fd.append("latitude", String(latitude));
+        fd.append("longitude", String(longitude));
+        fd.append("locale", "en_US");
+        fd.append("chatId", yelpChatId);
+        fd.append("sessionId", sessionId || "");
+        fd.append("action", "yes");
+        fd.append("businessId", restaurant.id);
+        fd.append("file", new Blob([], { type: "audio/webm" }), "empty.webm");
+
+        const res = await fetch(`${backendUrl}/api/talk`, {
+          method: "POST",
+          body: fd,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Store restaurant (without choice) and navigate to convo transcript page
+          sessionStorage.setItem(
+            `yon-result:${data.sessionId}`,
+            JSON.stringify({
+              restaurant: data.restaurant || restaurant,
+            })
+          );
+          // Store that we're coming from result page with yes action
+          sessionStorage.setItem(
+            `yon-result-choice:${data.sessionId}`,
+            JSON.stringify({ choice: "yes" })
+          );
+          // Update talk data with new sessionId if it changed
+          if (data.sessionId !== sessionId) {
+            sessionStorage.setItem(
+              `yon-talk:${data.sessionId}`,
+              JSON.stringify({
+                yelpChatId: data.yelpChatId,
+                sessionId: data.sessionId,
+                latitude,
+                longitude,
+              })
+            );
+          }
+          // Navigate to convo transcript page to continue conversation
+          router.push(`/convo?sessionId=${data.sessionId}`);
+          return;
+        } else {
+          // Backend call failed, but still navigate to convo page
+          console.warn("Backend call failed, but continuing to convo page");
+        }
+      } catch (error) {
+        // Backend call failed, but still navigate to convo page
+        console.error("Error confirming restaurant:", error);
+      }
+    }
+
+    // Fallback: Navigate to convo page even if backend call fails or not in talk mode
+    // Store restaurant and mark that we're coming from result page
+    sessionStorage.setItem(
+      `yon-result:${sessionId}`,
+      JSON.stringify({
+        restaurant: restaurant,
+      })
+    );
+    sessionStorage.setItem(
+      `yon-result-choice:${sessionId}`,
+      JSON.stringify({ choice: "yes" })
+    );
+
+    // Navigate to convo transcript page to continue conversation
+    router.push(
+      `/convo?sessionId=${sessionId}${isTalkMode ? "&mode=talk" : ""}`
+    );
+  };
+
+  const handleSwipeLeft = async () => {
+    // Swipe left = Next = Get another restaurant
+    if (mode === "talk" && sessionId) {
+      const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
+      if (talkData) {
+        const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        const fd = new FormData();
+        fd.append("latitude", String(latitude));
+        fd.append("longitude", String(longitude));
+        fd.append("locale", "en_US");
+        fd.append("chatId", yelpChatId);
+        fd.append("sessionId", sessionId);
+        fd.append("action", "next");
+        fd.append("file", new Blob([], { type: "audio/webm" }), "empty.webm");
+
+        try {
+          const res = await fetch(`${backendUrl}/api/talk`, {
+            method: "POST",
+            body: fd,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            // Update restaurant with new option
+            if (data.restaurant) {
+              sessionStorage.setItem(
+                `yon-result:${data.sessionId}`,
+                JSON.stringify({
+                  restaurant: data.restaurant,
+                })
+              );
+              setRestaurant(data.restaurant);
+              setChoice(null); // Reset choice
+            }
+          }
+        } catch (error) {
+          console.error("Error getting next restaurant:", error);
+        }
+      }
+    } else {
+      // For chat mode, go back to option page or chat
+      if (sessionId) {
+        router.push(`/option?sessionId=${sessionId}&mode=${mode || "chat"}`);
+      } else {
+        router.push("/chat");
+      }
+    }
+  };
+
+  const handleHeartToggle = (isSaved: boolean) => {
+    setSaved(isSaved);
+    // TODO: Save to favorites if needed
+  };
+
+  // Get current index for display (for now, just show 1)
+  const [currentIndex, setCurrentIndex] = useState(1);
+  const totalCount = 8; // This could be dynamic based on available restaurants
 
   return (
     <div className="min-h-screen bg-grey-100 pb-20">
       <div className="max-w-md mx-auto">
-        {/* Header */}
+        {/* Header - Match the design */}
         <div className="px-6 pt-8 pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h1 className="text-xl font-bold text-black">Summary</h1>
-              <p className="text-sm text-grey-500">
-                Here is your chosen restaurant.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                // Go back to chat - preserve sessionId if available
-                if (sessionId) {
-                  router.push(`/chat?sessionId=${sessionId}`);
-                } else {
-                  router.push("/chat");
-                }
-              }}
-              className="text-sm text-primary font-semibold hover:opacity-80 transition-opacity px-2 py-1 -mr-2"
-            >
-              ← Back to chat
+          <h1 className="text-xl font-bold text-black mb-6">Option</h1>
+
+          {/* YesorNext Button */}
+          <div className="flex justify-center mb-2">
+            <button className="rounded-full border border-grey-300 bg-grey-200 px-6 py-2 text-sm font-medium text-black">
+              YesorNext
             </button>
           </div>
+
+          {/* Counter */}
+          <div className="flex justify-center mb-4">
+            <p className="text-sm font-medium text-primary">
+              {currentIndex} out of {totalCount}
+            </p>
+          </div>
+
+          {/* Heading */}
+          <h2 className="text-2xl font-bold text-black text-center mb-6">
+            Here is your choice!
+          </h2>
         </div>
 
-        {/* Restaurant Card */}
-        {restaurant && (
+        {/* Swipeable Restaurant Card */}
+        {restaurant && !choice && (
+          <div className="min-h-[500px] flex items-center justify-center px-6 py-6">
+            <RestaurantCard
+              restaurant={restaurant}
+              saved={saved}
+              onHeartToggle={handleHeartToggle}
+              onSwipe={(direction: "left" | "right") => {
+                if (direction === "right") {
+                  handleSwipeRight(restaurant);
+                } else {
+                  handleSwipeLeft();
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* Swipe Instructions */}
+        {restaurant && !choice && (
+          <div className="px-6 pb-6 text-center">
+            <p className="text-sm text-grey-600">
+              swipe left for next, and swipe right for yes
+            </p>
+          </div>
+        )}
+
+        {/* Confirmation - Show after swipe right */}
+        {choice === "yes" && restaurant && (
           <div className="px-6 pb-6">
-            <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
-              {/* Image */}
-              <div className="relative w-full h-48 bg-grey-200 flex items-center justify-center overflow-hidden">
-                {restaurant.imageUrl && !imageError ? (
-                  <img
-                    src={restaurant.imageUrl}
-                    alt={restaurant.name}
-                    className="w-full h-full object-cover"
-                    onError={() => {
-                      console.error(
-                        "Image failed to load:",
-                        restaurant.imageUrl
-                      );
-                      setImageError(true);
-                    }}
-                    onLoad={() => {
-                      console.log(
-                        "Image loaded successfully:",
-                        restaurant.imageUrl
-                      );
-                    }}
-                  />
-                ) : (
-                  <ImageIcon className="h-14 w-14 text-grey-400" />
-                )}
-              </div>
+            <div className="bg-white rounded-3xl p-6 mb-6">
+              <h2 className="text-xl font-bold text-black mb-4 text-center">
+                Great choice!
+              </h2>
+              <p className="text-base text-grey-600 text-center mb-6">
+                What would you like to do next?
+              </p>
 
-              {/* Content */}
-              <div className="px-5 pt-4 pb-5">
-                <div className="leading-tight mb-3">
-                  <div className="text-xl font-extrabold text-black">
-                    {restaurant.name}
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-grey-500">
-                    {restaurant.cuisine}
-                  </div>
-                </div>
+              {/* Action Options */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setChoice("directions")}
+                  className="w-full rounded-full bg-primary text-white py-3 font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                >
+                  <MapPin className="h-5 w-5" />
+                  Get Directions
+                </button>
 
-                {/* Meta */}
-                <div className="flex flex-wrap items-center gap-4 text-sm text-black mb-3">
-                  <span className="font-semibold text-black">$$$</span>
-                  <span className="font-semibold text-black">
-                    {restaurant.distance}
-                  </span>
-                  <span className="font-semibold text-black">
-                    {restaurant.time}
-                  </span>
-                </div>
-
-                {/* Vibes */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {restaurant.vibes.map((vibe) => (
-                    <span
-                      key={vibe}
-                      className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-900"
-                    >
-                      {vibe}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Summary */}
-                <div className="rounded-2xl border-2 border-rose-400 px-4 py-3 text-center text-sm font-medium text-black">
-                  {restaurant.summary}
-                </div>
+                <button
+                  onClick={() => {
+                    // For now, just set a placeholder reservation time
+                    // In a real app, you'd have a date/time picker
+                    const time = new Date();
+                    time.setHours(time.getHours() + 2); // 2 hours from now
+                    setReservationTime(time.toISOString());
+                    setChoice("reserve");
+                  }}
+                  className="w-full rounded-full bg-white border-2 border-black text-black py-3 font-semibold hover:bg-grey-50 transition-colors"
+                >
+                  Make a Reservation
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Confirmation */}
-        <div className="px-6 pb-6">
-          {choice === "reserve" && restaurant && reservationTime && (
+        {/* Reservation Confirmation */}
+        {choice === "reserve" && restaurant && reservationTime && (
+          <div className="px-6 pb-6">
             <div className="text-center">
               <h2 className="text-xl font-bold text-black mb-2">
                 Your plan is set!
@@ -177,8 +325,12 @@ export default function ResultPage() {
                 .
               </p>
             </div>
-          )}
-          {choice === "directions" && (
+          </div>
+        )}
+
+        {/* Directions Confirmation */}
+        {choice === "directions" && restaurant && (
+          <div className="px-6 pb-6">
             <div className="text-center">
               <h2 className="text-xl font-bold text-black mb-2">
                 You&apos;re all set to go!
@@ -187,8 +339,8 @@ export default function ResultPage() {
                 Use the button below to open directions.
               </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="px-6 pb-6 space-y-3">

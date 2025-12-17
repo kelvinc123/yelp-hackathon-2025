@@ -3,19 +3,28 @@
 import { useRouter } from "next/navigation";
 import TalkInterface from "@/components/TalkInterface";
 
+type Restaurant = {
+  id: string;
+  name: string;
+  cuisine: string;
+  rating: number;
+  distance: string;
+  time: string;
+  summary: string;
+  imageUrl?: string;
+  vibes: string[];
+  address?: string;
+  phone?: string;
+  url?: string;
+};
+
 type TalkResult = {
   sessionId: string;
   transcript: string;
   yelpChatId: string;
-  card: {
-    yelp_business_id: string;
-    name: string;
-    rating?: number | null;
-    price?: string | null;
-    url?: string | null;
-    address?: string | null;
-    categories?: string[];
-  };
+  message: string;
+  restaurants?: Restaurant[];
+  restaurant?: Restaurant;
 };
 
 export default function TalkPage() {
@@ -59,17 +68,46 @@ export default function TalkPage() {
             const errorText = await res.text();
             error = { error: errorText };
           }
-          throw new Error(
-            error.detail || error.error || "Backend request failed"
-          );
+
+          // Handle rate limit errors gracefully
+          const errorMessage =
+            error.detail || error.error || "Backend request failed";
+          if (
+            errorMessage.includes("429") ||
+            errorMessage.includes("rate limit")
+          ) {
+            alert(
+              "Yelp API rate limit reached. Please wait a moment and try again."
+            );
+            throw new Error("Rate limit exceeded");
+          }
+
+          throw new Error(errorMessage);
         }
 
         const data: TalkResult = await res.json();
 
-        // store result
-        sessionStorage.setItem(`yon:${data.sessionId}`, JSON.stringify(data));
+        // store result with restaurants array
+        const storedData = {
+          ...data,
+          restaurants:
+            data.restaurants || (data.restaurant ? [data.restaurant] : []),
+        };
+        sessionStorage.setItem(
+          `yon:${data.sessionId}`,
+          JSON.stringify(storedData)
+        );
+        sessionStorage.setItem(
+          `yon-talk:${data.sessionId}`,
+          JSON.stringify({
+            yelpChatId: data.yelpChatId,
+            sessionId: data.sessionId,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          })
+        );
 
-        router.push(`/option?sessionId=${data.sessionId}`);
+        router.push(`/option?sessionId=${data.sessionId}&mode=talk`);
       }}
     />
   );

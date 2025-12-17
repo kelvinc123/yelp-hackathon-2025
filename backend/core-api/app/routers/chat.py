@@ -94,8 +94,9 @@ async def chat(request: ChatRequest, db=Depends(get_database)):
     # Build query for Yelp AI
     if request.action == "yes":
         query = (
-            "User confirmed they want this restaurant. Here are the details. "
-            "Ask if they want to make a reservation or share this with friends."
+            "The user has selected this restaurant and wants to proceed. "
+            "Respond warmly and ask what they'd like to do next: make a reservation, get directions, or something else. "
+            "Keep your response brief and friendly - just one sentence asking what they'd like to do."
         )
     elif request.action == "next":
         query = "User wants to see another option. Recommend a different restaurant."

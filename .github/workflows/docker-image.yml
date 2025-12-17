@@ -31,9 +31,9 @@ jobs:
 
     - name: Build and Push Docker image
       run: |
-        IMAGE_URI="us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-${{ env.MY_PROJECT_ENV  }}:latest"
-        cd backend/core-api && docker build -t "$IMAGE_URI" .
-        docker push "$IMAGE_URI"
+        docker-compose -f infra/docker-compose.local.yml build
+        docker tag core-api us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-prod:latest
+        docker push us-west1-docker.pkg.dev/yes-or-next/yes-or-next/yes-or-next-prod:latest
 
     - name: Deploy to Cloud Run
       run: |

@@ -218,25 +218,29 @@ export default function ResultPage() {
           </h2>
         </div>
 
-        {/* Swipeable Restaurant Card */}
-        {restaurant && !choice && (
+        {/* Swipeable Restaurant Card - Show always when restaurant is available */}
+        {restaurant && (
           <div className="min-h-[500px] flex items-center justify-center px-6 py-6">
             <RestaurantCard
               restaurant={restaurant}
               saved={saved}
               onHeartToggle={handleHeartToggle}
               onSwipe={(direction: "left" | "right") => {
-                if (direction === "right") {
-                  handleSwipeRight(restaurant);
-                } else {
-                  handleSwipeLeft();
+                if (!choice) {
+                  // Only allow swiping if no choice has been made yet
+                  if (direction === "right") {
+                    handleSwipeRight(restaurant);
+                  } else {
+                    handleSwipeLeft();
+                  }
                 }
               }}
+              disabled={!!choice}
             />
           </div>
         )}
 
-        {/* Swipe Instructions */}
+        {/* Swipe Instructions - Only show when no choice has been made */}
         {restaurant && !choice && (
           <div className="px-6 pb-6 text-center">
             <p className="text-sm text-grey-600">
@@ -287,8 +291,8 @@ export default function ResultPage() {
         {/* Reservation Confirmation */}
         {choice === "reserve" && restaurant && reservationTime && (
           <div className="px-6 pb-6">
-            <div className="text-center">
-              <h2 className="text-xl font-bold text-black mb-2">
+            <div className="text-center mb-4">
+              <h2 className="text-2xl font-bold text-black mb-2">
                 Your plan is set!
               </h2>
               <p className="text-base font-semibold text-primary">
@@ -309,8 +313,8 @@ export default function ResultPage() {
         {/* Directions Confirmation */}
         {choice === "directions" && restaurant && (
           <div className="px-6 pb-6">
-            <div className="text-center">
-              <h2 className="text-xl font-bold text-black mb-2">
+            <div className="text-center mb-4">
+              <h2 className="text-2xl font-bold text-black mb-2">
                 You&apos;re all set to go!
               </h2>
               <p className="text-base font-semibold text-primary">

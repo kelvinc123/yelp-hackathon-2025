@@ -28,12 +28,14 @@ export default function RestaurantCard({
   onSwipeComplete,
   saved,
   onHeartToggle,
+  disabled = false,
 }: {
   restaurant: Restaurant;
   onSwipe: (direction: "left" | "right") => void;
   onSwipeComplete?: () => void;
   saved?: boolean;
   onHeartToggle?: (newValue: boolean) => void;
+  disabled?: boolean;
 }) {
   const startX = useRef<number | null>(null);
   const [dx, setDx] = useState(0);
@@ -50,7 +52,7 @@ export default function RestaurantCard({
   const threshold = 90;
 
   function onPointerDown(e: React.PointerEvent) {
-    if (leaving) return;
+    if (leaving || disabled) return;
     setDragging(true);
     startX.current = e.clientX;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -111,7 +113,7 @@ export default function RestaurantCard({
         className={[
           "relative overflow-hidden rounded-[28px] bg-white",
           "shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
-          "touch-none", // helps pointer swiping on mobile
+          disabled ? "cursor-default" : "touch-none", // helps pointer swiping on mobile
           dragging
             ? "transition-none"
             : "transition-transform duration-200 ease-out",

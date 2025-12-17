@@ -195,25 +195,25 @@ export default function ResultPage() {
     <div className="min-h-screen bg-grey-100 pb-20">
       <div className="max-w-md mx-auto">
         {/* Header - Match the design */}
-        <div className="px-6 pt-8 pb-4">
-          <h1 className="text-xl font-bold text-black mb-6">Option</h1>
+        <div className="px-6 pt-8">
+          {/* <h1 className="text-xl font-bold text-black mb-6">Option</h1> */}
 
           {/* YesorNext Button */}
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-4">
             <button className="rounded-full border border-grey-300 bg-grey-200 px-6 py-2 text-sm font-medium text-black">
               YesorNext
             </button>
           </div>
 
-          {/* Counter */}
+          {/* Counter
           <div className="flex justify-center mb-4">
             <p className="text-sm font-medium text-primary">
               {currentIndex} out of {totalCount}
             </p>
-          </div>
+          </div> */}
 
           {/* Heading */}
-          <h2 className="text-2xl font-bold text-black text-center mb-6">
+          <h2 className="text-2xl font-bold text-black text-center mb-2">
             Here is your choice!
           </h2>
         </div>

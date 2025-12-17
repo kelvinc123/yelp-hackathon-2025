@@ -63,6 +63,8 @@ export default function ChatInterface({}: ChatInterfaceProps) {
   const [isReservationFlow, setIsReservationFlow] = useState(false);
   const [reservationTime, setReservationTime] = useState("");
   const [reservationConfirmed, setReservationConfirmed] = useState(false);
+  const [isDirectionsFlow, setIsDirectionsFlow] = useState(false);
+  const [showDirectionsChoice, setShowDirectionsChoice] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(
     null
@@ -310,6 +312,8 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       setIsReservationFlow(true);
       setReservationTime("");
       setReservationConfirmed(false);
+      setIsDirectionsFlow(false);
+      setShowDirectionsChoice(false);
 
       // Add helpful AI message
       const helpMessage: Message = {
@@ -322,22 +326,22 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       return;
     }
 
-    // For directions, go to result page with the chosen restaurant
+    // Stay in chat for directions flow
     if (choice === "directions") {
-      const payload = {
-        restaurant: selectedRestaurant,
-        choice,
+      setIsDirectionsFlow(true);
+      setShowDirectionsChoice(true);
+      setIsReservationFlow(false);
+      setReservationTime("");
+      setReservationConfirmed(false);
+
+      // Add helpful AI message
+      const helpMessage: Message = {
+        id: Date.now().toString(),
+        text: "Perfect! Choose your preferred maps app below to get directions to the restaurant.",
+        sender: "ai",
+        timestamp: new Date(),
       };
-      if (sessionId) {
-        sessionStorage.setItem(
-          `yon-result:${sessionId}`,
-          JSON.stringify(payload)
-        );
-        router.push(`/result?sessionId=${sessionId}`);
-      } else {
-        sessionStorage.setItem(`yon-result:temp`, JSON.stringify(payload));
-        router.push("/result");
-      }
+      setMessages((prev) => [...prev, helpMessage]);
       return;
     }
   };
@@ -626,6 +630,99 @@ export default function ChatInterface({}: ChatInterfaceProps) {
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Directions flow UI (stays in chat) */}
+        {isDirectionsFlow && selectedRestaurant && (
+          <div className="px-6 pt-4 pb-3 border-t border-grey-100 bg-white">
+            <div className="max-w-4xl mx-auto space-y-3">
+              <p className="text-sm font-semibold text-black mb-2">
+                Get directions to {selectedRestaurant.name}
+              </p>
+              {showDirectionsChoice ? (
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => {
+                        const query = encodeURIComponent(
+                          selectedRestaurant.address || selectedRestaurant.name
+                        );
+                        window.open(
+                          `https://www.google.com/maps/dir/?api=1&destination=${query}`,
+                          "_blank"
+                        );
+                      }}
+                      className="w-full rounded-full bg-[#4285F4] text-white py-3 font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                      Google Maps
+                    </button>
+                    <button
+                      onClick={() => {
+                        const query = encodeURIComponent(
+                          selectedRestaurant.address || selectedRestaurant.name
+                        );
+                        window.open(
+                          `https://maps.apple.com/?daddr=${query}`,
+                          "_blank"
+                        );
+                      }}
+                      className="w-full rounded-full bg-[#222222] text-white py-3 font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                      Apple Maps
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      // Go to summary page
+                      const payload = {
+                        restaurant: selectedRestaurant,
+                        choice: "directions" as const,
+                      };
+                      if (sessionId) {
+                        sessionStorage.setItem(
+                          `yon-result:${sessionId}`,
+                          JSON.stringify(payload)
+                        );
+                        router.push(`/result?sessionId=${sessionId}`);
+                      } else {
+                        sessionStorage.setItem(
+                          `yon-result:temp`,
+                          JSON.stringify(payload)
+                        );
+                        router.push("/result");
+                      }
+                    }}
+                    className="w-full rounded-full bg-grey-200 text-black py-3 text-sm font-semibold hover:bg-grey-300 transition-colors"
+                  >
+                    View summary
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDirectionsChoice(false);
+                      setIsDirectionsFlow(false);
+                    }}
+                    className="w-full rounded-full bg-white border border-grey-300 text-black py-2.5 text-sm font-semibold hover:bg-grey-50 transition-colors"
+                  >
+                    Back to chat
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

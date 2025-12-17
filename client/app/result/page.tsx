@@ -62,10 +62,27 @@ export default function ResultPage() {
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="px-6 pt-8 pb-4">
-          <h1 className="text-xl font-bold text-black">Summary</h1>
-          <p className="text-sm text-grey-500">
-            Here is your chosen restaurant.
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-xl font-bold text-black">Summary</h1>
+              <p className="text-sm text-grey-500">
+                Here is your chosen restaurant.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                // Go back to chat - preserve sessionId if available
+                if (sessionId) {
+                  router.push(`/chat?sessionId=${sessionId}`);
+                } else {
+                  router.push("/chat");
+                }
+              }}
+              className="text-sm text-primary font-semibold hover:opacity-80 transition-opacity px-2 py-1 -mr-2"
+            >
+              ← Back to chat
+            </button>
+          </div>
         </div>
 
         {/* Restaurant Card */}

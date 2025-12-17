@@ -114,28 +114,41 @@ export default function ChatInterface({}: ChatInterfaceProps) {
     const savedArray = Array.from(newSaved);
     localStorage.setItem("savedRestaurants", JSON.stringify(savedArray));
 
-    // Also save full restaurant data
-    const restaurant = messages
-      .map((m) => m.restaurant)
-      .find((r) => r?.id === restaurantId);
-    if (restaurant && isSaved) {
-      const savedRestaurantsData = JSON.parse(
-        localStorage.getItem("savedRestaurantsData") || "[]"
-      );
-      const existingIndex = savedRestaurantsData.findIndex(
+    // Update full restaurant data in localStorage
+    const savedRestaurantsData = JSON.parse(
+      localStorage.getItem("savedRestaurantsData") || "[]"
+    );
+
+    if (isSaved) {
+      // Add restaurant if saving
+      const restaurant = messages
+        .map((m) => m.restaurant)
+        .find((r) => r?.id === restaurantId);
+      if (restaurant) {
+        const existingIndex = savedRestaurantsData.findIndex(
+          (r: Restaurant) => r.id === restaurantId
+        );
+        if (existingIndex === -1) {
+          savedRestaurantsData.push({
+            ...restaurant,
+            savedDate: new Date().toISOString(),
+          });
+        }
+      }
+    } else {
+      // Remove restaurant if unsaving
+      const indexToRemove = savedRestaurantsData.findIndex(
         (r: Restaurant) => r.id === restaurantId
       );
-      if (existingIndex === -1) {
-        savedRestaurantsData.push({
-          ...restaurant,
-          savedDate: new Date().toISOString(),
-        });
-        localStorage.setItem(
-          "savedRestaurantsData",
-          JSON.stringify(savedRestaurantsData)
-        );
+      if (indexToRemove !== -1) {
+        savedRestaurantsData.splice(indexToRemove, 1);
       }
     }
+
+    localStorage.setItem(
+      "savedRestaurantsData",
+      JSON.stringify(savedRestaurantsData)
+    );
   };
 
   const scrollToBottom = () => {
@@ -310,27 +323,27 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-4 pb-56">
         <div className="max-w-4xl mx-auto">
-          {messages.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message.text}
-              sender={message.sender}
-              timestamp={message.timestamp}
-              restaurant={message.restaurant}
-              onRestaurantAction={handleRestaurantAction}
-              saved={
-                message.restaurant
-                  ? savedRestaurants.has(message.restaurant.id)
-                  : false
-              }
-              onHeartToggle={
-                message.restaurant
-                  ? (isSaved) =>
-                      handleHeartToggle(message.restaurant!.id, isSaved)
-                  : undefined
-              }
-            />
-          ))}
+          {messages.map((message) => {
+            const restaurantId = message.restaurant?.id;
+            return (
+              <ChatMessage
+                key={message.id}
+                message={message.text}
+                sender={message.sender}
+                timestamp={message.timestamp}
+                restaurant={message.restaurant}
+                onRestaurantAction={handleRestaurantAction}
+                saved={
+                  restaurantId ? savedRestaurants.has(restaurantId) : false
+                }
+                onHeartToggle={
+                  restaurantId
+                    ? (isSaved) => handleHeartToggle(restaurantId, isSaved)
+                    : undefined
+                }
+              />
+            );
+          })}
           {isLoading && (
             <div className="flex items-start gap-3 mb-4">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">

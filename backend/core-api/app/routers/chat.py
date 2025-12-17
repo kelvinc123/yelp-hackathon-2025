@@ -110,15 +110,17 @@ async def chat(request: ChatRequest):
     restaurant = None
     needs_details = False
     business_id_to_fetch = request.businessId
+    biz = None
     
     if not business_id_to_fetch:
-        # New recommendation - extract business
+        # New recommendation - extract business from Yelp AI response
         biz = pick_one_business(yelp_json)
         if biz and biz.get("id"):
             business_id_to_fetch = biz["id"]
             needs_details = True
     else:
-        # We have a businessId (from "yes" action), fetch details
+        # We have a businessId (from "yes" action), try to get biz from Yelp AI response
+        biz = pick_one_business(yelp_json)
         needs_details = True
     
     if needs_details and business_id_to_fetch:
@@ -135,7 +137,9 @@ async def chat(request: ChatRequest):
             details = None
         
         if details:
-            biz = pick_one_business(yelp_json) or details
+            # Use biz from Yelp AI if available, otherwise use details
+            if not biz:
+                biz = details
             
             cuisine = (
                 biz.get("categories", [{}])[0].get("title")
@@ -173,7 +177,33 @@ async def chat(request: ChatRequest):
             if not summary:
                 summary = "Great match for your vibe."
             
-            image_url = details.get("image_url") or (details.get("photos", [None])[0] if details.get("photos") else None)
+            # Get image URL - prioritize from business entity, then details API
+            image_url = None
+            
+            # First try: Get from business entity contextual_info photos (Yelp AI response)
+            if biz:
+                contextual_info = biz.get("contextual_info", {})
+                photos = contextual_info.get("photos", [])
+                if photos and len(photos) > 0:
+                    # Photos are objects with original_url
+                    if isinstance(photos[0], dict):
+                        image_url = photos[0].get("original_url")
+                    elif isinstance(photos[0], str):
+                        image_url = photos[0]
+            
+            # Second try: Get from details API image_url
+            if not image_url and details:
+                image_url = details.get("image_url")
+            
+            # Third try: Get from details API photos array
+            if not image_url and details:
+                details_photos = details.get("photos", [])
+                if details_photos and len(details_photos) > 0:
+                    # Photos can be URLs or objects
+                    if isinstance(details_photos[0], str):
+                        image_url = details_photos[0]
+                    elif isinstance(details_photos[0], dict):
+                        image_url = details_photos[0].get("url") or details_photos[0].get("original_url")
             
             price = biz.get("price") or details.get("price") or ""
             vibes = [cuisine, price, "Top rated" if rating >= 4.5 else ""]

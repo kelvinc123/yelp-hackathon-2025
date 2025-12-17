@@ -1,15 +1,34 @@
 import Image from "next/image";
+import RestaurantCardDisplay from "./RestaurantCardDisplay";
+
+interface Restaurant {
+  id: string;
+  name: string;
+  cuisine: string;
+  rating: number;
+  distance: string;
+  time: string;
+  summary: string;
+  imageUrl?: string;
+  vibes: string[];
+  address?: string;
+  phone?: string;
+}
 
 interface ChatMessageProps {
   message: string;
   sender: "ai" | "user";
   timestamp?: Date;
+  restaurant?: Restaurant;
+  onRestaurantAction?: (action: "yes" | "next", restaurantId: string) => void;
 }
 
 export default function ChatMessage({
   message,
   sender,
   timestamp,
+  restaurant,
+  onRestaurantAction,
 }: ChatMessageProps) {
   if (sender === "ai") {
     return (
@@ -21,12 +40,33 @@ export default function ChatMessage({
             width={24}
             height={24}
             className="object-cover rounded-full"
+            style={{ width: "auto", height: "auto" }}
           />
         </div>
-        <div className="flex flex-col gap-1 max-w-[75%]">
-          <div className="rounded-2xl rounded-tl-sm bg-primary px-4 py-3 shadow-sm animate-bubble-appear">
-            <p className="text-white text-sm leading-relaxed">{message}</p>
-          </div>
+        <div className="flex flex-col gap-1 max-w-[85%]">
+          {message && (
+            <div className="rounded-2xl rounded-tl-sm bg-primary px-4 py-3 shadow-sm animate-bubble-appear">
+              <p className="text-white text-sm leading-relaxed">{message}</p>
+            </div>
+          )}
+          {restaurant && (
+            <div className="mt-2 animate-bubble-appear">
+              <RestaurantCardDisplay
+                restaurant={restaurant}
+                onYes={() => {
+                  if (onRestaurantAction) {
+                    onRestaurantAction("yes", restaurant.id);
+                  }
+                }}
+                onNext={() => {
+                  if (onRestaurantAction) {
+                    onRestaurantAction("next", restaurant.id);
+                  }
+                }}
+                saved={false}
+              />
+            </div>
+          )}
           {timestamp && (
             <span className="text-xs text-grey-500 px-1 animate-fade-in">
               {timestamp.toLocaleTimeString([], {

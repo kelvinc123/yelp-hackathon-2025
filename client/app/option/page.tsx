@@ -1,31 +1,38 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import RestaurantSwipeView from "@/components/RestaurantSwipeView";
-import BottomNavigation from "@/components/BottomNavigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import RestaurantCard from "@/components/RestaurantCard";
 
 export default function OptionPage() {
+  const sp = useSearchParams();
+  const sessionId = sp.get("sessionId");
   const router = useRouter();
+  const [restaurant, setRestaurant] = useState<any>(null);
 
-  const handleSwipeComplete = (direction: "left" | "right") => {
-    // TODO: Save user decision to API
-    // POST /api/restaurants/{id}/decision
-    // Body: { decision: "yes" | "no" }
+  useEffect(() => {
+    if (!sessionId) return;
+    const raw = sessionStorage.getItem(`yon:${sessionId}`);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    setRestaurant(data.restaurant);
+  }, [sessionId]);
 
-    if (direction === "right") {
-      // User swiped right (YES) - navigate to result page
-      router.push("/result");
-    }
-    // If swiped left (NEXT), RestaurantSwipeView will handle showing next restaurant
-  };
+  if (!sessionId) return <div className="p-6">Missing sessionId</div>;
+  if (!restaurant) return <div className="p-6">Loading…</div>;
 
   return (
-    <>
-      <RestaurantSwipeView
-        onSwipeComplete={handleSwipeComplete}
-        onBack={() => router.push("/talk")}
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <RestaurantCard
+        restaurant={restaurant}
+        saved={false}
+        onHeartToggle={(v) => console.log("saved:", v)}
+        onSwipe={(dir) => {
+          console.log("swipe:", dir);
+          // later: dir === "left" => NEXT (call /api/next)
+          // dir === "right" => YES (call /api/yes)
+        }}
       />
-      <BottomNavigation />
-    </>
+    </div>
   );
 }

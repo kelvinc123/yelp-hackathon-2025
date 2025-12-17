@@ -66,8 +66,9 @@ class WhisperService:
 
 
 class OpenAIWhisperService:
-    def __init__(self, model_name: str = "gpt-4o-mini-transcribe"):
+    def __init__(self, model_name: str = "gpt-4o-mini-transcribe", tts_model: str = "tts-1"):
         self.model_name = model_name
+        self.tts_model = tts_model
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable is required")
@@ -111,6 +112,35 @@ class OpenAIWhisperService:
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+    
+    def text_to_speech(
+        self,
+        text: str,
+        voice: str = "alloy"
+    ) -> bytes:
+        """
+        Convert text to speech using OpenAI TTS.
+        
+        Available voices: alloy, echo, fable, onyx, nova, shimmer
+        """
+        try:
+            logger.info(f"Converting text to speech: {len(text)} characters")
+            
+            response = self.client.audio.speech.create(
+                model=self.tts_model,
+                voice=voice,
+                input=text
+            )
+            
+            audio_bytes = response.content
+            
+            logger.info(f"TTS conversion completed: {len(audio_bytes)} bytes")
+            
+            return audio_bytes
+            
+        except Exception as e:
+            logger.error(f"TTS conversion failed: {e}")
+            raise
 
 
 _whisper_service: Optional[WhisperService] = None

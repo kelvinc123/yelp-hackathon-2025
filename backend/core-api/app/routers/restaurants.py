@@ -11,7 +11,8 @@ from app.schemas import (
     TextPromptRequest,
     VoiceInputRequest,
     SwipeAction,
-    ReservationRequest,
+    ReservationTextRequest,
+    ReservationVoiceRequest,
     Restaurant
 )
 from app.services.yelp_ai import get_yelp_ai_service
@@ -94,6 +95,7 @@ async def process_text_prompt(
         enhanced_query = preference_context + user_query
         
         logger.info(f"Enhanced query with preferences: {enhanced_query}")
+
         yelp_response = yelp_service.chat(
             query=enhanced_query,
             latitude=request.latitude,
@@ -204,7 +206,7 @@ async def process_voice_input(
         
         preference_context = build_user_preference_context(db, request.user_id)
         user_query = "\n\nUser query: " + transcribed_text
-        enhanced_query = preference_context + transcribed_text
+        enhanced_query = preference_context + user_query
         
         logger.info(f"Enhanced query with preferences: {enhanced_query}")
         
@@ -267,17 +269,23 @@ async def process_voice_input(
         
         logger.info(f"Found {len(businesses)} restaurants for user {request.user_id}")
         
+        ai_text_response = yelp_response["response"]["text"]
+        
+        ai_audio_response = whisper_service.text_to_speech(ai_text_response, voice=request.voice)
+        ai_audio_base64 = base64.b64encode(ai_audio_response).decode()
+        
         return {
             "success": True,
             "conversation_id": conversation_id,
             "chat_id": yelp_response.get("chat_id"),
             "transcribed_text": transcribed_text,
             "detected_language": detected_language,
-            "ai_response": yelp_response["response"]["text"],
+            "ai_response_text": ai_text_response,
+            "ai_response_audio": ai_audio_base64,
             "restaurants": businesses,
             "total_results": len(businesses)
         }
-        
+
     except Exception as e:
         logger.error(f"Error processing voice input: {str(e)}")
         raise HTTPException(
@@ -412,91 +420,202 @@ async def handle_swipe(
         )
 
 
-@router.post("/reservation")
-async def make_reservation(
-    reservation: ReservationRequest,
+@router.post("/reservation/text")
+async def make_reservation_text(
+    request: ReservationTextRequest,
     db: Client = Depends(get_database)
 ):
     """
-    Create a restaurant reservation.
+    Make a restaurant reservation using text input via Yelp AI.
     
-    Note: This is optional functionality. Most users prefer to save restaurants
-    and decide timing later.
+    The request should reference a specific restaurant and include reservation details.
+    Example: "Make a reservation at [restaurant name] for 2 people at 7pm tonight"
     """
     try:
-        pass
+        logger.info(f"Processing reservation request for user {request.user_id}: {request.text}")
+        
+        restaurant_result = db.table("restaurants_discovered").select("*").eq(
+            "yelp_business_id", request.yelp_business_id
+        ).execute()
+        
+        if not restaurant_result.data or len(restaurant_result.data) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Restaurant {request.yelp_business_id} not found"
+            )
+        
+        restaurant = restaurant_result.data[0]
+        
+        reservation_prompt = f"I want to make a reservation at {restaurant['name']}. {request.text}"
+        
+        yelp_service = get_yelp_ai_service()
+        
+        yelp_response = yelp_service.chat(
+            query=reservation_prompt,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            chat_id=request.chat_id
+        )
+
+        conversation_result = db.table("conversations").select("id").eq("chat_id", request.chat_id).execute()
+        
+        if conversation_result.data and len(conversation_result.data) > 0:
+            conversation_id = conversation_result.data[0]["id"]
+        else:
+            conversation_id = str(uuid.uuid4())
+            conversation_data = {
+                "id": conversation_id,
+                "user_id": request.user_id,
+                "chat_id": request.chat_id,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            db.table("conversations").insert(conversation_data).execute()
+        
+        prompt_id = str(uuid.uuid4())
+        prompt_data = {
+            "id": prompt_id,
+            "conversation_id": conversation_id,
+            "user_id": request.user_id,
+            "prompt_text": reservation_prompt,
+            "prompt_type": "text",
+            "latitude": request.latitude,
+            "longitude": request.longitude,
+            "yelp_response": yelp_response,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        db.table("prompts").insert(prompt_data).execute()
+        
+        logger.info(f"Reservation request processed via Yelp AI for {restaurant['name']}")
+        
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "chat_id": yelp_response.get("chat_id"),
+            "restaurant_name": restaurant["name"],
+            "ai_response": yelp_response["response"]["text"],
+            "reservation_info": {
+                "restaurant_id": restaurant["id"],
+                "yelp_business_id": request.yelp_business_id
+            }
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error processing reservation: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
 
-@router.get("/feed")
-async def get_restaurant_feed(
-    user_id: str = "user_123",
-    latitude: float = None,
-    longitude: float = None,
-    limit: int = 10,
+@router.post("/reservation/voice")
+async def make_reservation_voice(
+    request: ReservationVoiceRequest,
     db: Client = Depends(get_database)
 ):
     """
-    Get personalized restaurant feed for swiping.
+    Make a restaurant reservation using voice input via Yelp AI.
     
-    AI pulls restaurants based on:
-    - Time of day
-    - Location
-    - Past preferences (stored locally or in DB)
-    - User's swipe history
+    User speaks their reservation request (e.g., "Reserve a table for 2 at 7pm")
+    and receives a voice response.
     """
     try:
-        pass
+        logger.info(f"Processing voice reservation request for user {request.user_id}")
+        
+        audio_bytes = base64.b64decode(request.audio_data)
+        
+        whisper_service = get_openai_whisper_service()
+        transcribed_text, detected_language = await whisper_service.transcribe_audio(audio_bytes)
+        
+        logger.info(f"Transcribed reservation text ({detected_language}): {transcribed_text}")
+        
+        if not transcribed_text.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not transcribe audio. Please try again."
+            )
+        
+        restaurant_result = db.table("restaurants_discovered").select("*").eq(
+            "yelp_business_id", request.yelp_business_id
+        ).execute()
+        
+        if not restaurant_result.data or len(restaurant_result.data) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Restaurant {request.yelp_business_id} not found"
+            )
+        
+        restaurant = restaurant_result.data[0]
+        
+        reservation_prompt = f"I want to make a reservation at {restaurant['name']}. {transcribed_text}"
+        
+        yelp_service = get_yelp_ai_service()
+        
+        yelp_response = yelp_service.chat(
+            query=reservation_prompt,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            chat_id=request.chat_id
+        )
+        
+        conversation_result = db.table("conversations").select("id").eq("chat_id", request.chat_id).execute()
+        
+        if conversation_result.data and len(conversation_result.data) > 0:
+            conversation_id = conversation_result.data[0]["id"]
+        else:
+            conversation_id = str(uuid.uuid4())
+            conversation_data = {
+                "id": conversation_id,
+                "user_id": request.user_id,
+                "chat_id": request.chat_id,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            db.table("conversations").insert(conversation_data).execute()
+        
+        prompt_id = str(uuid.uuid4())
+        prompt_data = {
+            "id": prompt_id,
+            "conversation_id": conversation_id,
+            "user_id": request.user_id,
+            "prompt_text": reservation_prompt,
+            "prompt_type": "voice",
+            "latitude": request.latitude,
+            "longitude": request.longitude,
+            "yelp_response": yelp_response,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        db.table("prompts").insert(prompt_data).execute()
+        
+        ai_text_response = yelp_response["response"]["text"]
+        
+        ai_audio_response = whisper_service.text_to_speech(ai_text_response, voice=request.voice)
+        ai_audio_base64 = base64.b64encode(ai_audio_response).decode()
+        
+        logger.info(f"Voice reservation request processed via Yelp AI for {restaurant['name']}")
+        
+        return {
+            "success": True,
+            "conversation_id": conversation_id,
+            "chat_id": yelp_response.get("chat_id"),
+            "restaurant_name": restaurant["name"],
+            "transcribed_text": transcribed_text,
+            "detected_language": detected_language,
+            "ai_response_text": ai_text_response,
+            "ai_response_audio": ai_audio_base64,
+            "reservation_info": {
+                "restaurant_id": restaurant["id"],
+                "yelp_business_id": request.yelp_business_id
+            }
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error processing voice reservation: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
 
-
-@router.get("/my-list")
-async def get_my_list(
-    user_id: str = "user_123",
-    db: Client = Depends(get_database)
-):
-    """
-    Get user's saved restaurants (all right-swipes).
-    
-    Groups:
-    - Going soon (with reservations)
-    - Saved for later
-    - Been there (visited)
-    """
-    try:
-        pass
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
-
-
-@router.get("/feeling-lucky")
-async def feeling_lucky(
-    user_id: str = "user_123",
-    latitude: float = None,
-    longitude: float = None,
-    db: Client = Depends(get_database)
-):
-    """
-    AI picks ONE restaurant instantly.
-    
-    For users who want zero friction and decision-making.
-    """
-    try:
-        pass
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
 

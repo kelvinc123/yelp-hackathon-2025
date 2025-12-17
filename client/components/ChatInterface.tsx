@@ -208,9 +208,10 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       if (data.chatId) setChatId(data.chatId);
       if (data.sessionId) setSessionId(data.sessionId);
 
-      // When user confirms "Yes", keep details internally but don't show the card yet
+      // When user confirms "Yes", update restaurant with full details (phone, URL, address)
       if (action === "yes") {
         if (data.restaurant) {
+          // Use the restaurant from API response which includes full contact details
           setSelectedRestaurant(data.restaurant);
         }
         setAwaitingChoice(true);
@@ -309,6 +310,15 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       setIsReservationFlow(true);
       setReservationTime("");
       setReservationConfirmed(false);
+
+      // Add helpful AI message
+      const helpMessage: Message = {
+        id: Date.now().toString(),
+        text: "Great! I'll help you make a reservation. First, select your preferred date and time below. Then you can book directly on Yelp or call the restaurant.",
+        sender: "ai",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, helpMessage]);
       return;
     }
 
@@ -394,7 +404,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 pb-56">
+      <div className="flex-1 overflow-y-auto px-6 py-6 pb-80 relative z-10">
         <div className="max-w-4xl mx-auto">
           {messages.map((message) => {
             const restaurantId = message.restaurant?.id;
@@ -428,6 +438,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
                 onSwipeRight={async (restaurant) => {
                   // User swiped right = yes = show options
                   if (restaurant) {
+                    // Temporarily set restaurant, will be updated with full details from API
                     setSelectedRestaurant(restaurant);
                     setAwaitingChoice(true);
                     setIsReservationFlow(false);
@@ -443,7 +454,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
                     };
                     setMessages((prev) => [...prev, actionMessage]);
 
-                    // Send yes action to backend
+                    // Send yes action to backend - this will fetch full details including phone/URL
                     await sendToYelpAI("", "yes", restaurant.id);
                   }
                 }}
@@ -455,7 +466,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
             );
           })}
           {isLoading && (
-            <div className="flex items-start gap-3 mb-4">
+            <div className="flex items-start gap-3 mb-6 relative z-20">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm">
                 <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               </div>
@@ -464,31 +475,34 @@ export default function ChatInterface({}: ChatInterfaceProps) {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4" />
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="fixed left-0 right-0 bottom-[80px] bg-white border-t border-grey-200 z-40">
+      <div className="fixed left-0 right-0 bottom-[80px] bg-white z-30">
         {/* Quick choice buttons after user says "Yes" */}
         {awaitingChoice && selectedRestaurant && (
-          <div className="px-6 pt-3 pb-2">
-            <div className="flex gap-2 overflow-x-auto max-w-4xl mx-auto">
+          <div className="px-6 pt-4 pb-3 border-t border-grey-100">
+            <p className="text-xs text-grey-600 mb-3 px-1">
+              What would you like to do?
+            </p>
+            <div className="flex gap-3 overflow-x-auto max-w-4xl mx-auto pb-1">
               <button
                 onClick={() => handleChoice("reserve")}
-                className="flex-shrink-0 rounded-full bg-primary text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-colors whitespace-nowrap"
+                className="flex-shrink-0 rounded-full bg-primary text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition-colors whitespace-nowrap"
               >
                 Make reservation
               </button>
               <button
                 onClick={() => handleChoice("directions")}
-                className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-4 py-2 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
+                className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-5 py-2.5 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
               >
                 Get directions
               </button>
               <button
                 onClick={() => handleChoice("somethingElse")}
-                className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-4 py-2 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
+                className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-5 py-2.5 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
               >
                 Something else
               </button>
@@ -498,21 +512,27 @@ export default function ChatInterface({}: ChatInterfaceProps) {
 
         {/* Reservation flow UI (stays in chat) */}
         {isReservationFlow && selectedRestaurant && (
-          <div className="px-6 pt-3 pb-2 border-t border-grey-100 bg-white">
-            <div className="max-w-4xl mx-auto space-y-2">
-              <p className="text-sm font-semibold text-black">
-                When are you going to {selectedRestaurant.name}?
-              </p>
-              <input
-                type="datetime-local"
-                value={reservationTime}
-                onChange={(e) => {
-                  setReservationTime(e.target.value);
-                  setReservationConfirmed(false);
-                }}
-                className="w-full rounded-full border border-grey-300 px-4 py-2 text-sm text-black bg-white"
-              />
-              <div className="flex gap-2 mt-1">
+          <div className="px-6 pt-4 pb-3 border-t border-grey-100 bg-white">
+            <div className="max-w-4xl mx-auto space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-black mb-1">
+                  When are you going to {selectedRestaurant.name}?
+                </p>
+                <p className="text-xs text-grey-600 mb-2">
+                  Select your preferred date and time
+                </p>
+                <input
+                  type="datetime-local"
+                  value={reservationTime}
+                  onChange={(e) => {
+                    setReservationTime(e.target.value);
+                    setReservationConfirmed(false);
+                  }}
+                  className="w-full rounded-full border border-grey-300 px-4 py-2.5 text-sm text-black bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+
+              {reservationTime && !reservationConfirmed && (
                 <button
                   onClick={() => {
                     if (!reservationTime) return;
@@ -526,98 +546,99 @@ export default function ChatInterface({}: ChatInterfaceProps) {
                     });
                     const confirmMessage: Message = {
                       id: Date.now().toString(),
-                      text: `Got it, you're heading to ${selectedRestaurant.name} on ${when}.`,
+                      text: `Perfect! I've saved your plan to visit ${selectedRestaurant.name} on ${when}. Use the buttons below to book your reservation.`,
                       sender: "ai",
                       timestamp: new Date(),
                     };
                     setMessages((prev) => [...prev, confirmMessage]);
                   }}
-                  disabled={!reservationTime}
-                  className="flex-1 rounded-full bg-primary text-white py-2 text-sm font-semibold disabled:bg-grey-300 disabled:text-grey-600"
+                  className="w-full rounded-full bg-primary text-white py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   Confirm time
                 </button>
-                <button
-                  onClick={() => {
-                    if (
-                      reservationConfirmed &&
-                      reservationTime &&
-                      selectedRestaurant
-                    ) {
-                      const payload = {
-                        restaurant: selectedRestaurant,
-                        choice: "reserve" as const,
-                        reservationTime,
-                      };
-                      if (sessionId) {
-                        sessionStorage.setItem(
-                          `yon-result:${sessionId}`,
-                          JSON.stringify(payload)
-                        );
-                        router.push(`/result?sessionId=${sessionId}`);
-                      } else {
-                        sessionStorage.setItem(
-                          `yon-result:temp`,
-                          JSON.stringify(payload)
-                        );
-                        router.push("/result");
-                      }
-                    }
-                    setIsReservationFlow(false);
-                    setReservationTime("");
-                    setReservationConfirmed(false);
-                  }}
-                  className="flex-1 rounded-full bg-grey-200 text-black py-2 text-sm font-semibold"
-                >
-                  Done
-                </button>
-              </div>
-              {reservationConfirmed && reservationTime && (
-                <p className="text-xs text-grey-600">
-                  Saved for{" "}
-                  {new Date(reservationTime).toLocaleString([], {
-                    weekday: "short",
-                    month: "short",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  .
-                </p>
               )}
-              <div className="flex gap-2 pt-1">
-                {selectedRestaurant.url && (
-                  <a
-                    href={selectedRestaurant.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 inline-flex items-center justify-center rounded-full bg-black text-white py-2 text-xs font-semibold hover:opacity-90"
+
+              {reservationConfirmed && reservationTime && (
+                <div className="space-y-2 pt-2 border-t border-grey-200">
+                  <p className="text-xs text-grey-600 mb-2">
+                    <strong>Next step:</strong> Book your reservation using one
+                    of the options below:
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {selectedRestaurant.url && (
+                      <a
+                        href={selectedRestaurant.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full inline-flex items-center justify-center rounded-full bg-black text-white py-3 text-sm font-semibold hover:opacity-90 transition-opacity"
+                      >
+                        📅 Book on Yelp
+                      </a>
+                    )}
+                    {selectedRestaurant.phone && (
+                      <a
+                        href={`tel:${selectedRestaurant.phone}`}
+                        className="w-full inline-flex items-center justify-center rounded-full bg-white border-2 border-black text-black py-3 text-sm font-semibold hover:bg-grey-50 transition-colors"
+                      >
+                        📞 Call {selectedRestaurant.phone}
+                      </a>
+                    )}
+                    {!selectedRestaurant.url && !selectedRestaurant.phone && (
+                      <p className="text-xs text-grey-600 text-center py-2">
+                        Contact information not available. Please visit the
+                        restaurant's website or check Yelp for booking options.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (
+                        reservationConfirmed &&
+                        reservationTime &&
+                        selectedRestaurant
+                      ) {
+                        const payload = {
+                          restaurant: selectedRestaurant,
+                          choice: "reserve" as const,
+                          reservationTime,
+                        };
+                        if (sessionId) {
+                          sessionStorage.setItem(
+                            `yon-result:${sessionId}`,
+                            JSON.stringify(payload)
+                          );
+                          router.push(`/result?sessionId=${sessionId}`);
+                        } else {
+                          sessionStorage.setItem(
+                            `yon-result:temp`,
+                            JSON.stringify(payload)
+                          );
+                          router.push("/result");
+                        }
+                      }
+                      setIsReservationFlow(false);
+                      setReservationTime("");
+                      setReservationConfirmed(false);
+                    }}
+                    className="w-full rounded-full bg-grey-200 text-black py-2 text-sm font-semibold hover:bg-grey-300 transition-colors mt-2"
                   >
-                    Book on Yelp
-                  </a>
-                )}
-                {selectedRestaurant.phone && (
-                  <a
-                    href={`tel:${selectedRestaurant.phone}`}
-                    className="flex-1 inline-flex items-center justify-center rounded-full bg-white border border-black text-black py-2 text-xs font-semibold hover:bg-grey-50"
-                  >
-                    Call to book
-                  </a>
-                )}
-              </div>
+                    View summary
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Suggestions */}
         {messages.length <= 1 && (
-          <div className="px-6 pt-3 pb-2">
-            <div className="flex gap-2 overflow-x-auto max-w-4xl mx-auto">
+          <div className="px-6 pt-4 pb-3">
+            <div className="flex gap-3 overflow-x-auto max-w-4xl mx-auto pb-1">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={index}
                   onClick={() => handleSuggestionClick(suggestion)}
-                  className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-4 py-2 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
+                  className="flex-shrink-0 rounded-full bg-white border border-grey-300 px-5 py-2.5 text-sm text-black hover:bg-grey-50 transition-colors whitespace-nowrap"
                 >
                   {suggestion}
                 </button>

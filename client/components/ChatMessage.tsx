@@ -46,7 +46,7 @@ export default function ChatMessage({
 }: ChatMessageProps) {
   if (sender === "ai") {
     return (
-      <div className="flex items-start gap-3 mb-6 animate-chat-bubble-in">
+      <div className="flex items-start gap-3 mb-6 animate-chat-bubble-in relative z-10">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm overflow-hidden">
           <Image
             src="/yon.png"
@@ -126,7 +126,7 @@ export default function ChatMessage({
   }
 
   return (
-    <div className="flex items-start justify-end gap-3 mb-6 animate-chat-bubble-in">
+    <div className="flex items-start justify-end gap-3 mb-6 animate-chat-bubble-in relative z-10">
       <div className="flex flex-col gap-2 items-end max-w-[75%]">
         <div className="rounded-2xl rounded-tr-sm bg-grey-200 px-4 py-3 shadow-sm animate-bubble-appear">
           <p className="text-black text-sm leading-relaxed">{message}</p>

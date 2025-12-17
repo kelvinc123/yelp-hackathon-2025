@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import BottomNavigation from "@/components/BottomNavigation";
 import { Clock, MapPin, MessageCircle, Star } from "lucide-react";
 
@@ -34,6 +35,8 @@ const SAVED_RESTAURANTS: SavedRestaurant[] = [
     summary: "Vegan comfort plates with big flavor and family-style portions.",
     vibes: ["Cozy", "Comfort food", "Casual"],
     savedDate: "2024-12-10T18:30:00.000Z",
+    imageUrl:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=400&q=80",
   },
   {
     id: "2",
@@ -45,6 +48,8 @@ const SAVED_RESTAURANTS: SavedRestaurant[] = [
     summary: "Brothy bowls and mazemen built for chilly nights and catch-ups.",
     vibes: ["Late-night", "Noodles", "Casual"],
     savedDate: "2024-12-11T19:15:00.000Z",
+    imageUrl:
+      "https://images.unsplash.com/photo-1523983303491-180b01c3e770?auto=format&fit=crop&w=400&q=80",
   },
   {
     id: "3",
@@ -57,6 +62,8 @@ const SAVED_RESTAURANTS: SavedRestaurant[] = [
       "Late-night bowls when you and YonTheBot both said 'one more place'.",
     vibes: ["Cozy", "Late-night", "Soulful"],
     savedDate: "2024-12-12T21:45:00.000Z",
+    imageUrl:
+      "https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=400&q=80",
   },
 ];
 
@@ -179,10 +186,14 @@ export default function ProfilePage() {
                   {/* Image */}
                   <div className="w-24 h-full bg-grey-200 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
                     {restaurant.imageUrl ? (
-                      <img
+                      <Image
                         src={restaurant.imageUrl}
                         alt={restaurant.name}
                         className="object-cover w-full h-full aspect-[4/5]"
+                        width={96}
+                        height={128}
+                        unoptimized
+                        priority={restaurant.id === "1"} // Just as example: prioritize the first image
                       />
                     ) : (
                       <div className="text-grey-400 text-xs">Image</div>

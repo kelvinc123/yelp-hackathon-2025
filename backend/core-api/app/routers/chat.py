@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import requests
 import math
 import uuid
 from app.services.yelp_ai import YelpAIService
+from app.deps.database import get_database
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -42,6 +43,13 @@ class ChatResponse(BaseModel):
     sessionId: str
 
 
+class ChatSummary(BaseModel):
+    id: str
+    chat_id: Optional[str]
+    created_at: str
+    last_message: Optional[str] = None
+
+
 def haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate distance between two coordinates in miles"""
     R = 3958.8
@@ -65,7 +73,7 @@ def pick_one_business(yelp_json: dict):
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, db=Depends(get_database)):
     """Handle chat requests with Yelp AI"""
     if not request.message and not request.action:
         raise HTTPException(
@@ -109,6 +117,49 @@ async def chat(request: ChatRequest):
         )
     response_text = yelp_json.get("response", {}).get("text", "")
     new_chat_id = yelp_json.get("chat_id") or request.chatId
+
+    # --- Persist conversation + prompt in Supabase ---
+    # For now we use a fixed user_id; later this can come from auth/session
+    user_id = "user_123"
+
+    # Upsert conversation by chat_id
+    conversation_id = None
+    if new_chat_id:
+        conv_existing = (
+            db.table("conversations")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("chat_id", new_chat_id)
+            .limit(1)
+            .execute()
+        )
+        if conv_existing.data:
+            conversation_id = conv_existing.data[0]["id"]
+        else:
+            conv_insert = (
+                db.table("conversations")
+                .insert({"user_id": user_id, "chat_id": new_chat_id})
+                .execute()
+            )
+            if conv_insert.data:
+                conversation_id = conv_insert.data[0]["id"]
+
+    # Insert prompt row with Yelp JSON response
+    try:
+        db.table("prompts").insert(
+            {
+                "conversation_id": conversation_id,
+                "user_id": user_id,
+                "prompt_text": request.message or "",
+                "prompt_type": "text",
+                "latitude": request.latitude,
+                "longitude": request.longitude,
+                "yelp_response": yelp_json,
+            }
+        ).execute()
+    except Exception:
+        # Don't fail the chat if logging to DB fails
+        pass
     
     # Extract business and fetch details
     restaurant = None
@@ -242,6 +293,51 @@ async def chat(request: ChatRequest):
         restaurant=restaurant,
         sessionId=session_id
     )
+
+
+@router.get("/history", response_model=List[ChatSummary])
+async def get_chat_history(db=Depends(get_database)):
+    """Return recent chat conversations for the current user."""
+    user_id = "user_123"
+
+    conv_resp = (
+        db.table("conversations")
+        .select("id, chat_id, created_at")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+
+    conversations = conv_resp.data or []
+
+    # Optionally fetch a short summary from the latest prompt per conversation
+    history: List[ChatSummary] = []
+    for conv in conversations:
+        last_prompt = (
+            db.table("prompts")
+            .select("prompt_text")
+            .eq("conversation_id", conv["id"])
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        last_text = (
+            last_prompt.data[0]["prompt_text"]
+            if last_prompt.data
+            else None
+        )
+
+        history.append(
+            ChatSummary(
+                id=conv["id"],
+                chat_id=conv.get("chat_id"),
+                created_at=conv["created_at"],
+                last_message=last_text,
+            )
+        )
+
+    return history
 
 
 

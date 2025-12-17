@@ -3,7 +3,13 @@
 import { usePathname, useRouter } from "next/navigation";
 import { Home, History, User } from "lucide-react";
 
-export default function BottomNavigation() {
+interface BottomNavigationProps {
+  onNavigate?: (path: string) => void;
+}
+
+export default function BottomNavigation({
+  onNavigate,
+}: BottomNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -47,7 +53,13 @@ export default function BottomNavigation() {
           return (
             <button
               key={item.path}
-              onClick={() => router.push(item.path)}
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate(item.path);
+                } else {
+                  router.push(item.path);
+                }
+              }}
               className="flex flex-col items-center gap-1 px-4 py-2 transition-colors"
               aria-label={item.label}
             >

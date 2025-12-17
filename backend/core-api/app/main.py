@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from app.routers import restaurants
+from app.routers import restaurants, chat, talk
 
 app = FastAPI(
     title=os.getenv("API_TITLE", "Core API"),
@@ -18,6 +18,8 @@ app.add_middleware(
 )
 
 app.include_router(restaurants.router)
+app.include_router(chat.router)
+app.include_router(talk.router)
 
 @app.get("/")
 async def root():

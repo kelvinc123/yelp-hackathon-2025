@@ -16,23 +16,27 @@ class YelpAIService:
         query: str, 
         latitude: Optional[float] = None, 
         longitude: Optional[float] = None,
-        chat_id: Optional[str] = None
+        chat_id: Optional[str] = None,
+        locale: str = "en_US"
     ) -> Dict[str, Any]:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         
         payload: Dict[str, Any] = {
             "query": query
         }
         
-        if latitude and longitude:
-            payload["user_context"] = {
-                "locale": "en_US",
-                "latitude": latitude,
-                "longitude": longitude
-            }
+        user_context: Dict[str, Any] = {"locale": locale}
+        if latitude is not None:
+            user_context["latitude"] = latitude
+        if longitude is not None:
+            user_context["longitude"] = longitude
+        
+        if user_context:
+            payload["user_context"] = user_context
         
         if chat_id:
             payload["chat_id"] = chat_id

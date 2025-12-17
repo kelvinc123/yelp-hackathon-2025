@@ -1,88 +1,85 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import BottomNavigation from "@/components/BottomNavigation";
 
-interface SavedRestaurant {
+interface ChatHistoryItem {
   id: string;
-  name: string;
-  cuisine: string;
-  imageUrl?: string;
-  vibes: string[];
-  visitedDate: string;
+  chat_id?: string | null;
+  created_at: string;
+  last_message?: string | null;
 }
 
 export default function HistoryPage() {
-  // TODO: Fetch from API
-  const savedRestaurants: SavedRestaurant[] = [
-    {
-      id: "1",
-      name: "Sakura Fusion",
-      cuisine: "Japanese Fusion",
-      vibes: ["Trendy", "Romantic", "Upscale"],
-      visitedDate: "Went by Dec 12",
-    },
-    {
-      id: "2",
-      name: "Bella Italia",
-      cuisine: "Italian",
-      vibes: ["Cozy", "Family-friendly", "Casual"],
-      visitedDate: "Went by Dec 10",
-    },
-  ];
+  const [items, setItems] = useState<ChatHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    async function load() {
+      try {
+        const res = await fetch(`${backendUrl}/api/chat/history`);
+        if (!res.ok) throw new Error("Failed to load history");
+        const data = await res.json();
+        setItems(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   return (
     <div className="min-h-screen bg-grey-100 pb-20">
       <div className="max-w-md mx-auto">
         {/* Header */}
-        <div className="px-6 pt-8 pb-4">
-          <h1 className="text-2xl font-bold text-black mb-2">Your History</h1>
+        <div className="px-6 pt-8 pb-2">
+          <h1 className="text-2xl font-bold text-black mb-1">Your History</h1>
           <p className="text-base text-grey-500">
-            Places you&apos;ve said Yes to!
+            Recent conversations with YonTheBot.
           </p>
         </div>
 
-        {/* Restaurant List */}
-        <div className="px-6 pb-6 space-y-4">
-          {savedRestaurants.map((restaurant) => (
-            <div
-              key={restaurant.id}
-              className="bg-white rounded-2xl overflow-hidden shadow-sm"
-            >
-              <div className="flex">
-                {/* Image */}
-                <div className="w-24 h-24 bg-grey-200 flex items-center justify-center flex-shrink-0">
-                  <div className="text-grey-400 text-xs">Image</div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 px-4 py-3">
-                  <div className="text-lg font-bold text-black mb-1">
-                    {restaurant.name}
-                  </div>
-                  <div className="text-sm text-grey-500 mb-2">
-                    {restaurant.cuisine}
-                  </div>
-
-                  {/* Vibes */}
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {restaurant.vibes.slice(0, 3).map((vibe) => (
-                      <span
-                        key={vibe}
-                        className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-900"
-                      >
-                        {vibe}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Date */}
-                  <div className="text-xs text-grey-400">
-                    {restaurant.visitedDate}
-                  </div>
-                </div>
-              </div>
+        {/* History List */}
+        <div className="px-6 pb-6 space-y-3 mt-2">
+          {loading ? (
+            <div className="text-center text-grey-400 text-sm py-12">
+              Loading...
             </div>
-          ))}
+          ) : items.length === 0 ? (
+            <div className="text-center text-grey-400 text-sm py-12">
+              No conversations yet.
+            </div>
+          ) : (
+            items.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-2xl px-4 py-3 shadow-sm flex flex-col gap-1"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-black truncate">
+                    {item.last_message || "Chat with YonTheBot"}
+                  </p>
+                  <span className="text-[11px] text-grey-400 whitespace-nowrap">
+                    {new Date(item.created_at).toLocaleString([], {
+                      month: "short",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+                {item.chat_id && (
+                  <p className="text-[11px] text-grey-400 truncate">
+                    Chat ID: {item.chat_id}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -90,4 +87,3 @@ export default function HistoryPage() {
     </div>
   );
 }
-

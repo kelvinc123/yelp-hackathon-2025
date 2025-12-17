@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppLogo from "./AppLogo";
 import ModeToggle from "./ModeToggle";
 import Image from "next/image";
@@ -12,6 +12,7 @@ interface MainScreenProps {
     reservationTime: string;
     onView: () => void;
     onFindAnother: () => void;
+    onMarkedVisited?: () => void;
   } | null;
 }
 
@@ -20,21 +21,37 @@ export default function MainScreen({
   reservation,
 }: MainScreenProps) {
   const [activeMode, setActiveMode] = useState<"chat" | "talk">("talk");
+  // Show the reservation toast if there's a reservation
+  const [showReservation, setShowReservation] = useState(!!reservation);
+
+  // Keep showReservation in sync if reservation changes from parent
+  useEffect(() => {
+    setShowReservation(!!reservation);
+  }, [reservation]);
 
   const handleModeChange = (mode: "chat" | "talk") => {
-    // Only navigate if clicking a different mode
     if (mode !== activeMode) {
       setActiveMode(mode);
       onModeChange?.(mode);
     }
   };
 
-  // Handler for clicking the central picture - always goes to Talk
   const handleCentralImageClick = () => {
     if (activeMode !== "talk") {
       setActiveMode("talk");
     }
     onModeChange?.("talk");
+  };
+
+  // User clicks Mark as Visited
+  const handleMarkedVisited = () => {
+    // Call parent callback
+    if (reservation?.onMarkedVisited) {
+      reservation.onMarkedVisited();
+    }
+    // Hide the toast
+    setShowReservation(false);
+    // Parent is expected to move this reservation to history in their state when onMarkedVisited is called.
   };
 
   return (
@@ -58,7 +75,7 @@ export default function MainScreen({
           <button
             type="button"
             onClick={handleCentralImageClick}
-            className="outline-none border-none bg-transparent cursor-pointer active:scale-95 transition-transform"
+            className="outline-none border-none bg-transparent cursor-pointer active:scale-95 transition-transform hover:scale-105 hover:bg-grey-200"
             aria-label="Start talking"
             style={{ WebkitTapHighlightColor: "transparent" }}
           >
@@ -72,10 +89,10 @@ export default function MainScreen({
             />
           </button>
 
-          {/* iOS-style reservation toast */}
-          {reservation && (
+          {/* Reservation Toast */}
+          {reservation && showReservation && (
             <div className="w-full max-w-sm">
-              <div className="mx-auto rounded-2xl bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.18)] border border-grey-200 px-4 py-3 flex flex-col gap-1">
+              <div className="mx-auto rounded-2xl bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.18)] border border-grey-200 px-4 py-3 flex flex-col gap-1 transition-all duration-200">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-semibold text-grey-500 uppercase tracking-wide">
                     Upcoming plan
@@ -101,17 +118,19 @@ export default function MainScreen({
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={reservation.onView}
-                    className="flex-1 rounded-full bg-primary text-white py-1.5 text-xs font-semibold hover:opacity-90"
+                    className="flex-1 rounded-full bg-primary text-white py-1.5 text-xs font-semibold hover:opacity-90 transition duration-150 hover:shadow-md"
                   >
                     View details
                   </button>
                   <button
-                    onClick={reservation.onFindAnother}
-                    className="flex-1 rounded-full bg-grey-200 text-black py-1.5 text-xs font-semibold hover:bg-grey-300"
+                    onClick={handleMarkedVisited}
+                    className="flex-1 rounded-full bg-grey-200 text-black py-1.5 text-xs font-semibold transition duration-150 hover:bg-green-500 hover:text-white hover:shadow-md cursor-pointer"
                   >
-                    Find another
+                    Mark as Visited
                   </button>
                 </div>
+                {/* After marking as visited, the reservation should disappear from the main screen.
+                    This expects the parent to update/remove the reservation state when onMarkedVisited is called. */}
               </div>
             </div>
           )}

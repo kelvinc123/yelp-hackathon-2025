@@ -7,9 +7,18 @@ import Image from "next/image";
 
 interface MainScreenProps {
   onModeChange?: (mode: "chat" | "talk") => void;
+  reservation?: {
+    restaurantName: string;
+    reservationTime: string;
+    onView: () => void;
+    onFindAnother: () => void;
+  } | null;
 }
 
-export default function MainScreen({ onModeChange }: MainScreenProps) {
+export default function MainScreen({
+  onModeChange,
+  reservation,
+}: MainScreenProps) {
   const [activeMode, setActiveMode] = useState<"chat" | "talk">("talk");
 
   const handleModeChange = (mode: "chat" | "talk") => {
@@ -45,7 +54,7 @@ export default function MainScreen({ onModeChange }: MainScreenProps) {
         </p>
 
         {/* Central Avatar (now clickable) */}
-        <div className="flex-1 flex flex-col items-center justify-center w-full my-8">
+        <div className="flex-1 flex flex-col items-center justify-center w-full my-8 space-y-4">
           <button
             type="button"
             onClick={handleCentralImageClick}
@@ -62,6 +71,50 @@ export default function MainScreen({ onModeChange }: MainScreenProps) {
               height={256}
             />
           </button>
+
+          {/* iOS-style reservation toast */}
+          {reservation && (
+            <div className="w-full max-w-sm">
+              <div className="mx-auto rounded-2xl bg-white/95 shadow-[0_10px_30px_rgba(0,0,0,0.18)] border border-grey-200 px-4 py-3 flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-grey-500 uppercase tracking-wide">
+                    Upcoming plan
+                  </span>
+                  <span className="text-[11px] text-grey-400">
+                    {new Date(reservation.reservationTime).toLocaleTimeString(
+                      [],
+                      { hour: "2-digit", minute: "2-digit" }
+                    )}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-black truncate">
+                  {reservation.restaurantName}
+                </p>
+                <p className="text-xs text-black">
+                  {new Date(reservation.reservationTime).toLocaleString([], {
+                    month: "short",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={reservation.onView}
+                    className="flex-1 rounded-full bg-primary text-white py-1.5 text-xs font-semibold hover:opacity-90"
+                  >
+                    View details
+                  </button>
+                  <button
+                    onClick={reservation.onFindAnother}
+                    className="flex-1 rounded-full bg-grey-200 text-black py-1.5 text-xs font-semibold hover:bg-grey-300"
+                  >
+                    Find another
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Mode Toggle */}

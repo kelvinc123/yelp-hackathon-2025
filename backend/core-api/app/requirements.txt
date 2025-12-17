@@ -4,5 +4,5 @@ requests==2.32.3
 python-dotenv==1.0.1
 pydantic==2.8.2
 supabase==2.10.0
-faster-whisper==1.0.3
+openai==1.58.1
 python-multipart==0.0.9

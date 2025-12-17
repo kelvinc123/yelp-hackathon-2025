@@ -15,7 +15,7 @@ from app.schemas import (
     Restaurant
 )
 from app.services.yelp_ai import get_yelp_ai_service
-from app.services.whisper_service import get_whisper_service
+from app.services.whisper_service import get_openai_whisper_service
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +120,8 @@ async def process_voice_input(
         logger.info(f"Processing voice input for user {request.user_id}")
         
         audio_bytes = base64.b64decode(request.audio_data)
-        
-        whisper_service = get_whisper_service()
+
+        whisper_service = get_openai_whisper_service()
         transcribed_text, detected_language = await whisper_service.transcribe_audio(audio_bytes)
         
         logger.info(f"Transcribed text ({detected_language}): {transcribed_text}")

@@ -21,6 +21,8 @@ interface ChatMessageProps {
   timestamp?: Date;
   restaurant?: Restaurant;
   onRestaurantAction?: (action: "yes" | "next", restaurantId: string) => void;
+  saved?: boolean;
+  onHeartToggle?: (isSaved: boolean) => void;
 }
 
 export default function ChatMessage({
@@ -29,6 +31,8 @@ export default function ChatMessage({
   timestamp,
   restaurant,
   onRestaurantAction,
+  saved = false,
+  onHeartToggle,
 }: ChatMessageProps) {
   if (sender === "ai") {
     return (
@@ -63,7 +67,8 @@ export default function ChatMessage({
                     onRestaurantAction("next", restaurant.id);
                   }
                 }}
-                saved={false}
+                saved={saved}
+                onHeartToggle={onHeartToggle}
               />
             </div>
           )}

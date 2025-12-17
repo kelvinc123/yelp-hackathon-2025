@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ArrowUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowUp, X } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import BottomNavigation from "./BottomNavigation";
 
@@ -51,12 +52,20 @@ export default function ChatInterface({}: ChatInterfaceProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [chatId, setChatId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [savedRestaurants, setSavedRestaurants] = useState<Set<string>>(
+    new Set()
+  );
+  const [showWarning, setShowWarning] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null
+  );
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Get user location on mount
   useEffect(() => {
@@ -78,6 +87,56 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       );
     }
   }, []);
+
+  // Load saved restaurants from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("savedRestaurants");
+    if (saved) {
+      try {
+        const savedArray = JSON.parse(saved);
+        setSavedRestaurants(new Set(savedArray));
+      } catch (e) {
+        console.error("Error loading saved restaurants:", e);
+      }
+    }
+  }, []);
+
+  const handleHeartToggle = (restaurantId: string, isSaved: boolean) => {
+    const newSaved = new Set(savedRestaurants);
+    if (isSaved) {
+      newSaved.add(restaurantId);
+    } else {
+      newSaved.delete(restaurantId);
+    }
+    setSavedRestaurants(newSaved);
+
+    // Save to localStorage
+    const savedArray = Array.from(newSaved);
+    localStorage.setItem("savedRestaurants", JSON.stringify(savedArray));
+
+    // Also save full restaurant data
+    const restaurant = messages
+      .map((m) => m.restaurant)
+      .find((r) => r?.id === restaurantId);
+    if (restaurant && isSaved) {
+      const savedRestaurantsData = JSON.parse(
+        localStorage.getItem("savedRestaurantsData") || "[]"
+      );
+      const existingIndex = savedRestaurantsData.findIndex(
+        (r: Restaurant) => r.id === restaurantId
+      );
+      if (existingIndex === -1) {
+        savedRestaurantsData.push({
+          ...restaurant,
+          savedDate: new Date().toISOString(),
+        });
+        localStorage.setItem(
+          "savedRestaurantsData",
+          JSON.stringify(savedRestaurantsData)
+        );
+      }
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -192,6 +251,50 @@ export default function ChatInterface({}: ChatInterfaceProps) {
     inputRef.current?.focus();
   };
 
+  const saveChatState = () => {
+    const chatState = {
+      messages,
+      chatId,
+      sessionId,
+      timestamp: new Date().toISOString(),
+    };
+    localStorage.setItem("chatState", JSON.stringify(chatState));
+  };
+
+  const handleNavigation = (path: string) => {
+    // Check if chat is active (more than just the initial greeting)
+    if (messages.length > 1) {
+      // If navigating to Home, save state and navigate immediately
+      if (path === "/") {
+        saveChatState();
+        router.push(path);
+      } else {
+        // For other paths, show warning
+        setPendingNavigation(path);
+        setShowWarning(true);
+      }
+    } else {
+      router.push(path);
+    }
+  };
+
+  const handleConfirmLeave = () => {
+    if (pendingNavigation) {
+      // Save state before leaving (except for Home which is already saved)
+      if (pendingNavigation !== "/") {
+        saveChatState();
+      }
+      router.push(pendingNavigation);
+    }
+    setShowWarning(false);
+    setPendingNavigation(null);
+  };
+
+  const handleCancelLeave = () => {
+    setShowWarning(false);
+    setPendingNavigation(null);
+  };
+
   return (
     <div className="flex h-screen flex-col bg-white relative">
       {/* Header */}
@@ -215,6 +318,17 @@ export default function ChatInterface({}: ChatInterfaceProps) {
               timestamp={message.timestamp}
               restaurant={message.restaurant}
               onRestaurantAction={handleRestaurantAction}
+              saved={
+                message.restaurant
+                  ? savedRestaurants.has(message.restaurant.id)
+                  : false
+              }
+              onHeartToggle={
+                message.restaurant
+                  ? (isSaved) =>
+                      handleHeartToggle(message.restaurant!.id, isSaved)
+                  : undefined
+              }
             />
           ))}
           {isLoading && (
@@ -277,7 +391,45 @@ export default function ChatInterface({}: ChatInterfaceProps) {
         </div>
       </div>
 
-      <BottomNavigation />
+      <BottomNavigation onNavigate={handleNavigation} />
+
+      {/* Warning Modal */}
+      {showWarning && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-lg">
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-xl font-bold text-black">Leave Chat?</h3>
+              <button
+                onClick={handleCancelLeave}
+                className="text-grey-500 hover:text-black transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-base text-black mb-6">
+              You have an active chat session. Are you sure you want to leave?
+              {pendingNavigation === "/"
+                ? " Your conversation will be saved and you can return to it later."
+                : " Your conversation will be lost."}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelLeave}
+                className="flex-1 rounded-full border-2 border-grey-300 text-black px-4 py-2 font-semibold hover:bg-grey-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmLeave}
+                className="flex-1 rounded-full bg-primary text-white px-4 py-2 font-semibold hover:opacity-90 transition-opacity"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

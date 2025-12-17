@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import BottomNavigation from "@/components/BottomNavigation";
-import { Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 import { speakText, stopSpeaking } from "@/utils/tts";
 
 interface Message {
@@ -411,17 +411,28 @@ export default function ConvoPage() {
   return (
     <div className="min-h-screen bg-grey-100 pb-20">
       <div className="max-w-md mx-auto px-6 pt-8 pb-6">
-        <h1 className="text-xl font-bold text-black mb-6">Convo transcript</h1>
 
-        <div className="bg-white rounded-3xl px-6 py-8 mb-6">
+        <div className="bg-white rounded-3xl mb-6">
           <h2 className="text-xl font-bold text-black mb-4">
             Let&apos;s get into the details!
           </h2>
 
-          {/* Image placeholder */}
-          <div className="w-full h-48 bg-grey-200 rounded-2xl flex items-center justify-center mb-6">
-            <ImageIcon className="h-14 w-14 text-grey-400" />
-          </div>
+          {reservationUrl ? (
+            // Show image if a "slide yes" restaurant was chosen (i.e., reservationUrl exists)
+            <div className="w-full h-48 bg-grey-200 rounded-2xl flex items-center justify-center mb-6 overflow-hidden">
+              {/* Show image here, fall back to icon if image fails */}
+              <img
+                src={reservationUrl}
+                alt="Restaurant"
+                className="object-cover w-full h-full rounded-2xl"
+                onError={(e) => {
+                  // fallback to icon if image fails to load
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  // Optionally show a fallback icon overlay here if desired
+                }}
+              />
+            </div>
+          ) : null}
 
           {/* Messages */}
           <div className="space-y-4 mb-6">
@@ -433,8 +444,15 @@ export default function ConvoPage() {
                 }`}
               >
                 {message.sender === "ai" && (
-                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
-                    <span className="text-white text-xs">AI</span>
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary shadow-sm overflow-hidden">
+                    <Image
+                      src="/yon.png"
+                      alt="AI Assistant"
+                      width={24}
+                      height={24}
+                      className="object-cover rounded-full"
+                      style={{ width: "auto", height: "auto" }}
+                    />
                   </div>
                 )}
                 <div
@@ -472,8 +490,19 @@ export default function ConvoPage() {
                   </p>
                 </div>
                 {message.sender === "user" && (
-                  <div className="h-8 w-8 rounded-full bg-grey-400 flex items-center justify-center shrink-0">
-                    <span className="text-white text-xs">U</span>
+                  <div className="h-8 w-8 rounded-full bg-grey-400 flex items-center justify-center shrink-0 bg-gray-200">
+                    <svg
+                      className="h-5 w-5 text-black"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
                 )}
               </div>
@@ -506,7 +535,7 @@ export default function ConvoPage() {
                 {/* Shadow */}
                 <div className="absolute inset-0 bg-primary rounded-full blur-md opacity-30"></div>
                 {/* Red circular button */}
-                <div className="relative w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                <div className="relative w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-lg bg-gray-200">
                   <svg
                     className="h-12 w-12 text-white"
                     fill="none"

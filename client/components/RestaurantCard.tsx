@@ -102,15 +102,15 @@ export default function RestaurantCard({
 
   return (
     <div className="relative w-full max-w-[340px] select-none">
-      {/* stacked pink paper behind */}
-      <div className="absolute inset-0 -z-20 translate-x-2 translate-y-2 rotate-[3deg] rounded-[34px] bg-rose-300/60" />
-      <div className="absolute inset-0 -z-10 -translate-x-1 translate-y-1 rotate-[-4deg] rounded-[34px] bg-rose-200/80" />
+      {/* Layered pink accent effect - top and right edges */}
+      <div className="absolute inset-0 -z-20 translate-x-1 translate-y-1 rounded-[28px] bg-depth/40" />
+      <div className="absolute inset-0 -z-10 translate-x-0.5 translate-y-0.5 rounded-[28px] bg-gloss/60" />
 
       {/* main card */}
       <div
         className={[
-          "relative overflow-hidden rounded-[34px] bg-white",
-          "shadow-[0_22px_55px_rgba(0,0,0,0.14)] ring-1 ring-black/5",
+          "relative overflow-hidden rounded-[28px] bg-white",
+          "shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
           "touch-none", // helps pointer swiping on mobile
           dragging
             ? "transition-none"
@@ -123,7 +123,7 @@ export default function RestaurantCard({
         onPointerCancel={endDrag}
       >
         {/* image */}
-        <div className="relative h-[190px] bg-gray-200 flex items-center justify-center">
+        <div className="relative h-[240px] bg-grey-200 flex items-center justify-center overflow-hidden">
           {restaurant.imageUrl ? (
             <img
               src={restaurant.imageUrl}
@@ -132,87 +132,78 @@ export default function RestaurantCard({
               draggable={false}
             />
           ) : (
-            <ImageIcon className="h-14 w-14 text-gray-400" />
+            <ImageIcon className="h-14 w-14 text-grey-400" />
           )}
 
-          {/* heart */}
+          {/* heart - top left, white circle with black heart outline */}
           <button
             type="button"
-            className={`absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/90 shadow-sm ring-1 ring-black/5 active:scale-95 transition ${
-              saved ? "border-2 border-rose-400" : ""
-            }`}
+            className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white shadow-md active:scale-95 transition"
             aria-label={saved ? "saved" : "favorite"}
             onClick={handleHeartClick}
           >
             <Heart
               className={`h-5 w-5 ${
-                saved ? "text-rose-500 fill-rose-500" : "text-black"
+                saved ? "text-primary fill-primary" : "text-black"
               }`}
               fill={saved ? "currentColor" : "none"}
+              strokeWidth={2}
             />
           </button>
 
-          {/* rating pill */}
-          <div className="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 shadow-sm ring-1 ring-black/5">
-            <span className="inline-flex items-center gap-1 text-sm font-semibold text-black">
-              <Star className="h-4 w-4 text-green-500 fill-green-500" />
+          {/* rating badge - top right, white oval with green star */}
+          <div className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 shadow-md">
+            <Star className="h-3.5 w-3.5 text-accent fill-accent" />
+            <span className="text-sm font-semibold text-black">
               {restaurant.rating.toFixed(1)}
             </span>
-            <span className="text-xs text-gray-500">(328)</span>
+            <span className="text-xs text-grey-500">(328)</span>
           </div>
         </div>
 
         {/* content */}
-        <div className="px-5 pt-5 pb-6">
-          <div className="leading-tight">
-            <div className="text-xl font-extrabold text-black">
+        <div className="px-6 pt-5 pb-6">
+          {/* Restaurant name and cuisine */}
+          <div className="leading-tight mb-4">
+            <div className="text-xl font-bold text-black">
               {restaurant.name}
             </div>
-            <div className="mt-1 text-sm font-medium text-gray-500">
+            <div className="mt-1 text-sm font-medium text-grey-500">
               {restaurant.cuisine}
             </div>
           </div>
 
-          {/* meta row */}
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-black">
-            <div className="flex items-center gap-2">
-              <IconBubble>
-                <DollarSign className="h-4 w-4 text-black" />
-              </IconBubble>
-              <span className="font-semibold text-black">$$</span>
+          {/* Details row - icons with text */}
+          <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center gap-1.5">
+              <DollarSign className="h-4 w-4 text-black" />
+              <span className="font-medium text-black">
+                {restaurant.vibes?.find(
+                  (v) => v && (v.includes("$") || v.match(/^\$+$/))
+                ) || "$$"}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <IconBubble>
-                <MapPin className="h-4 w-4 text-black" />
-              </IconBubble>
-              <span className="font-semibold text-black">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-black" />
+              <span className="font-medium text-black">
                 {restaurant.distance}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <IconBubble>
-                <Clock className="h-4 w-4 text-black" />
-              </IconBubble>
-              <span className="font-semibold text-black">
-                {restaurant.time}
-              </span>
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-black" />
+              <span className="font-medium text-black">{restaurant.time}</span>
             </div>
           </div>
 
-          {/* vibes */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {(restaurant.vibes ?? []).slice(0, 3).map((v) => (
-              <span
-                key={v}
-                className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-900"
-              >
-                {v}
-              </span>
-            ))}
+          {/* Cuisine tag - pink background with white text */}
+          <div className="mb-4">
+            <span className="inline-block rounded-full bg-depth px-3 py-1 text-xs font-semibold text-white">
+              {restaurant.cuisine}
+            </span>
           </div>
 
-          {/* summary box */}
-          <div className="mt-5 rounded-[22px] border-2 border-rose-400 px-4 py-5 text-center text-sm font-medium text-gray-700">
+          {/* Description box - red outline */}
+          <div className="mt-4 rounded-2xl border-2 border-primary px-4 py-4 text-sm font-medium text-black leading-relaxed">
             {restaurant.summary}
           </div>
         </div>
@@ -234,13 +225,5 @@ export default function RestaurantCard({
         )}
       </div>
     </div>
-  );
-}
-
-function IconBubble({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="grid h-7 w-7 place-items-center rounded-full bg-gray-100 ring-1 ring-black/5">
-      {children}
-    </span>
   );
 }

@@ -108,12 +108,10 @@ export default function ProfilePage() {
             Y
           </div>
           <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-black">YonTheBot</h1>
-              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-                Always Hungry
-              </span>
-            </div>
+            <h1 className="text-3xl font-bold text-black">YonTheBot</h1>
+            <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 mt-1">
+              Always Hungry
+            </span>
             <p className="text-sm text-grey-500 mt-1">
               Your foodie twin that remembers your cravings, late-night chats,
               and saved spots.

@@ -3,16 +3,49 @@ name: Docker Image CI
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
 
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: cd backend/core-api && docker build . --file Dockerfile --tag yes-or-next:$(date +%s)
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Determine Environment
+      id: determine-env
+      run: echo "MY_PROJECT_ENV=prod" >> $GITHUB_ENV
+
+    - name: Authenticate with Google Clouid
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_DEPLOY_SA }}
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Configure Docker to use gcloud as a credential helper
+      run: gcloud auth configure-docker ${{ secrets.GCP_LOCATION}}-docker.pkg.dev
+
+    - name: Build and Push Docker image
+      run: |
+        IMAGE_URI="${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/yes-or-next-image/yes-or-next-project-${{ env.MY_PROJECT_ENV  }}:latest"
+        docker build -t "$IMAGE_URI" .
+        docker push "$IMAGE_URI"
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy my-service-${{ env.MY_PROJECT_ENV  }}  \
+          --image "${{ secrets.GCP_LOCATION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/yes-or-next-iamge/yes-or-next-project-${{ env.MY_PROJECT_ENV  }}:latest" \
+          --platform managed \
+          --region ${{ secrets.GCP_LOCATION }} \
+          --port 8080 \
+          --memory 512Mi \
+          --cpu 1 \
+          --max-instances 1 \
+          --project ${{ secrets.GCP_PROJECT_ID  }} \
+          --service-account ${{ secrets.GCP_PROJECT_SA_NAME }} \
+          --set-env-vars MY_ENV=${{ env.MY_PROJECT_ENV }} \
+          --set-env-vars OTHER_VAR=${{ secrets.MY_SECRET }}

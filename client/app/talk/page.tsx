@@ -46,7 +46,8 @@ export default function TalkPage() {
 
         // send to backend directly
         const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+          process.env.NEXT_PUBLIC_BACKEND_URL ||
+          "https://my-service-prod-84243174586.us-west1.run.app";
         const fd = new FormData();
         fd.append(
           "file",

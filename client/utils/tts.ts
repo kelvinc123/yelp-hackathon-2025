@@ -13,7 +13,7 @@ export async function speakText(
   options: TTSOptions = {}
 ): Promise<void> {
   const backendUrl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+    process.env.NEXT_PUBLIC_BACKEND_URL || "https://my-service-prod-84243174586.us-west1.run.app";
 
   try {
     const response = await fetch(`${backendUrl}/api/tts/speech`, {

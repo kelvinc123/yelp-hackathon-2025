@@ -178,7 +178,8 @@ export default function ChatInterface({}: ChatInterfaceProps) {
     try {
       // Call backend API instead of Next.js API route
       const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+        process.env.NEXT_PUBLIC_BACKEND_URL ||
+        "https://my-service-prod-84243174586.us-west1.run.app";
       const response = await fetch(`${backendUrl}/api/chat`, {
         method: "POST",
         headers: {

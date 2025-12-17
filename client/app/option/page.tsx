@@ -89,7 +89,8 @@ export default function OptionPage() {
       if (talkData) {
         const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
         const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+          process.env.NEXT_PUBLIC_BACKEND_URL ||
+          "https://my-service-prod-84243174586.us-west1.run.app";
         const fd = new FormData();
         fd.append("latitude", String(latitude));
         fd.append("longitude", String(longitude));
@@ -157,7 +158,8 @@ export default function OptionPage() {
       if (talkData) {
         const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
         const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+          process.env.NEXT_PUBLIC_BACKEND_URL ||
+          "https://my-service-prod-84243174586.us-west1.run.app";
         const fd = new FormData();
         fd.append("latitude", String(latitude));
         fd.append("longitude", String(longitude));

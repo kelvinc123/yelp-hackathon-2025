@@ -2,7 +2,6 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import CircularAvatar from "@/components/CircularAvatar";
 import BottomNavigation from "@/components/BottomNavigation";
 import { Image as ImageIcon } from "lucide-react";
 import { speakText, stopSpeaking } from "@/utils/tts";
@@ -42,12 +41,13 @@ export default function ConvoPage() {
   useEffect(() => {
     if (!sessionId) return;
 
-    // Check if we're coming from result page (after swipe right)
+    // Check if we're coming from result page (after swipe right or need details)
     const resultChoiceData = sessionStorage.getItem(
       `yon-result-choice:${sessionId}`
     );
-    const comingFromResult =
-      resultChoiceData && JSON.parse(resultChoiceData).choice === "yes";
+    const choiceData = resultChoiceData ? JSON.parse(resultChoiceData) : null;
+    const comingFromResult = choiceData && choiceData.choice === "yes";
+    const needDetails = choiceData && choiceData.choice === "need-details";
 
     // Check for reservation URL
     const reservationData = sessionStorage.getItem(
@@ -70,6 +70,29 @@ export default function ConvoPage() {
         parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }))
       );
       setHasGreeted(true); // Don't show greeting if we have messages
+    } else if (needDetails) {
+      // Coming from result page after 3 left swipes - ask for more details
+      const timer = setTimeout(async () => {
+        const aiMessage: Message = {
+          id: Date.now().toString(),
+          text: "Would you want to describe more in details?",
+          sender: "ai",
+          timestamp: new Date(),
+        };
+        setMessages([aiMessage]);
+        try {
+          await speakText(aiMessage.text, {
+            voice: "coral",
+            instructions: "Speak in a warm and friendly tone.",
+          });
+        } catch (error) {
+          console.error("Error speaking AI response:", error);
+        }
+        setHasGreeted(true);
+        // Clear the need-details flag
+        sessionStorage.removeItem(`yon-result-choice:${sessionId}`);
+      }, 500);
+      return () => clearTimeout(timer);
     } else if (comingFromResult) {
       // Coming from result page - add user confirmation message
       const userMessage: Message = {
@@ -207,7 +230,7 @@ export default function ConvoPage() {
 
     const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
     const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      process.env.NEXT_PUBLIC_BACKEND_URL || "https://my-service-prod-84243174586.us-west1.run.app";
     const fd = new FormData();
     fd.append(
       "file",
@@ -471,15 +494,35 @@ export default function ConvoPage() {
             </div>
           )}
 
-          {/* Microphone button */}
+          {/* Microphone button - Red circle with mic icon */}
           <div className="flex justify-center">
             <button
               onClick={isListening ? stopRecording : startRecording}
-              className="outline-none border-none bg-transparent cursor-pointer active:scale-95 transition-transform"
+              className="outline-none border-none bg-transparent cursor-pointer active:scale-95 transition-transform disabled:opacity-50"
               aria-label={isListening ? "Stop listening" : "Start listening"}
               disabled={status === "processing"}
             >
-              <CircularAvatar variant="microphone" />
+              <div className="relative">
+                {/* Shadow */}
+                <div className="absolute inset-0 bg-primary rounded-full blur-md opacity-30"></div>
+                {/* Red circular button */}
+                <div className="relative w-24 h-24 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                  <svg
+                    className="h-12 w-12 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                    />
+                  </svg>
+                </div>
+              </div>
             </button>
           </div>
 

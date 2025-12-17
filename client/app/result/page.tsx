@@ -39,6 +39,8 @@ export default function ResultPage() {
   const [showDirectionsChoice, setShowDirectionsChoice] = useState(false);
   const [reservationTime, setReservationTime] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [swipeLeftCount, setSwipeLeftCount] = useState(0);
+  const [isProcessingSwipe, setIsProcessingSwipe] = useState(false);
 
   useEffect(() => {
     const key = sessionId ? `yon-result:${sessionId}` : "yon-result:temp";
@@ -70,137 +72,113 @@ export default function ResultPage() {
   }, [sessionId, mode]);
 
   const handleSwipeRight = async (restaurant: Restaurant) => {
-    // Swipe right = Yes = Confirm and continue conversation in convo transcript page
-    // Check if we're in talk mode (from URL or session storage)
-    const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
-    const isTalkMode = mode === "talk" || !!talkData;
+    // Prevent multiple simultaneous swipes
+    if (isProcessingSwipe) return;
+    setIsProcessingSwipe(true);
 
-    if (isTalkMode && talkData) {
-      // For talk mode, try to call backend with yes action
-      try {
-        const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
-        const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-        const fd = new FormData();
-        fd.append("latitude", String(latitude));
-        fd.append("longitude", String(longitude));
-        fd.append("locale", "en_US");
-        fd.append("chatId", yelpChatId);
-        fd.append("sessionId", sessionId || "");
-        fd.append("action", "yes");
-        fd.append("businessId", restaurant.id);
-        fd.append("file", new Blob([], { type: "audio/webm" }), "empty.webm");
+    try {
+      // Swipe right = Yes = Confirm and continue conversation in convo transcript page
+      // Check if we're in talk mode (from URL or session storage)
+      const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
+      const isTalkMode = mode === "talk" || !!talkData;
 
-        const res = await fetch(`${backendUrl}/api/talk`, {
-          method: "POST",
-          body: fd,
-        });
+      // Skip API call - we'll show the message directly in convo page
+      // This saves an API call since we know what message to show
 
-        if (res.ok) {
-          const data = await res.json();
-          // Store restaurant (without choice) and navigate to convo transcript page
-          sessionStorage.setItem(
-            `yon-result:${data.sessionId}`,
-            JSON.stringify({
-              restaurant: data.restaurant || restaurant,
-            })
-          );
-          // Store that we're coming from result page with yes action
-          sessionStorage.setItem(
-            `yon-result-choice:${data.sessionId}`,
-            JSON.stringify({ choice: "yes" })
-          );
-          // Update talk data with new sessionId if it changed
-          if (data.sessionId !== sessionId) {
-            sessionStorage.setItem(
-              `yon-talk:${data.sessionId}`,
-              JSON.stringify({
-                yelpChatId: data.yelpChatId,
-                sessionId: data.sessionId,
-                latitude,
-                longitude,
-              })
-            );
-          }
-          // Navigate to convo transcript page to continue conversation
-          router.push(`/convo?sessionId=${data.sessionId}`);
-          return;
-        } else {
-          // Backend call failed, but still navigate to convo page
-          console.warn("Backend call failed, but continuing to convo page");
-        }
-      } catch (error) {
-        // Backend call failed, but still navigate to convo page
-        console.error("Error confirming restaurant:", error);
-      }
+      // Fallback: Navigate to convo page even if backend call fails or not in talk mode
+      // Store restaurant and mark that we're coming from result page
+      sessionStorage.setItem(
+        `yon-result:${sessionId}`,
+        JSON.stringify({
+          restaurant: restaurant,
+        })
+      );
+      sessionStorage.setItem(
+        `yon-result-choice:${sessionId}`,
+        JSON.stringify({ choice: "yes" })
+      );
+
+      // Navigate to convo transcript page to continue conversation
+      router.push(
+        `/convo?sessionId=${sessionId}${isTalkMode ? "&mode=talk" : ""}`
+      );
+    } finally {
+      setIsProcessingSwipe(false);
     }
-
-    // Fallback: Navigate to convo page even if backend call fails or not in talk mode
-    // Store restaurant and mark that we're coming from result page
-    sessionStorage.setItem(
-      `yon-result:${sessionId}`,
-      JSON.stringify({
-        restaurant: restaurant,
-      })
-    );
-    sessionStorage.setItem(
-      `yon-result-choice:${sessionId}`,
-      JSON.stringify({ choice: "yes" })
-    );
-
-    // Navigate to convo transcript page to continue conversation
-    router.push(
-      `/convo?sessionId=${sessionId}${isTalkMode ? "&mode=talk" : ""}`
-    );
   };
 
   const handleSwipeLeft = async () => {
-    // Swipe left = Next = Get another restaurant
-    if (mode === "talk" && sessionId) {
-      const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
-      if (talkData) {
-        const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
-        const backendUrl =
-          process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-        const fd = new FormData();
-        fd.append("latitude", String(latitude));
-        fd.append("longitude", String(longitude));
-        fd.append("locale", "en_US");
-        fd.append("chatId", yelpChatId);
-        fd.append("sessionId", sessionId);
-        fd.append("action", "next");
-        fd.append("file", new Blob([], { type: "audio/webm" }), "empty.webm");
+    // Prevent multiple simultaneous swipes
+    if (isProcessingSwipe) return;
+    setIsProcessingSwipe(true);
 
-        try {
-          const res = await fetch(`${backendUrl}/api/talk`, {
-            method: "POST",
-            body: fd,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            // Update restaurant with new option
-            if (data.restaurant) {
-              sessionStorage.setItem(
-                `yon-result:${data.sessionId}`,
-                JSON.stringify({
-                  restaurant: data.restaurant,
-                })
-              );
-              setRestaurant(data.restaurant);
-              setChoice(null); // Reset choice
+    try {
+      // Increment swipe left count
+      const newCount = swipeLeftCount + 1;
+      setSwipeLeftCount(newCount);
+
+      // After 3 left swipes, redirect to convo page to ask for more details
+      if (newCount >= 3) {
+        // Store that we need more details
+        sessionStorage.setItem(
+          `yon-result-choice:${sessionId}`,
+          JSON.stringify({ choice: "need-details" })
+        );
+        // Navigate to convo page
+        router.push(`/convo?sessionId=${sessionId}&mode=talk`);
+        return;
+      }
+
+      // Swipe left = Next = Get another restaurant
+      if (mode === "talk" && sessionId) {
+        const talkData = sessionStorage.getItem(`yon-talk:${sessionId}`);
+        if (talkData) {
+          const { yelpChatId, latitude, longitude } = JSON.parse(talkData);
+          const backendUrl =
+            process.env.NEXT_PUBLIC_BACKEND_URL ||
+            "https://my-service-prod-84243174586.us-west1.run.app";
+          const fd = new FormData();
+          fd.append("latitude", String(latitude));
+          fd.append("longitude", String(longitude));
+          fd.append("locale", "en_US");
+          fd.append("chatId", yelpChatId);
+          fd.append("sessionId", sessionId);
+          fd.append("action", "next");
+          fd.append("file", new Blob([], { type: "audio/webm" }), "empty.webm");
+
+          try {
+            const res = await fetch(`${backendUrl}/api/talk`, {
+              method: "POST",
+              body: fd,
+            });
+            if (res.ok) {
+              const data = await res.json();
+              // Update restaurant with new option
+              if (data.restaurant) {
+                sessionStorage.setItem(
+                  `yon-result:${data.sessionId}`,
+                  JSON.stringify({
+                    restaurant: data.restaurant,
+                  })
+                );
+                setRestaurant(data.restaurant);
+                setChoice(null); // Reset choice
+              }
             }
+          } catch (error) {
+            console.error("Error getting next restaurant:", error);
           }
-        } catch (error) {
-          console.error("Error getting next restaurant:", error);
+        }
+      } else {
+        // For chat mode, go back to option page or chat
+        if (sessionId) {
+          router.push(`/option?sessionId=${sessionId}&mode=${mode || "chat"}`);
+        } else {
+          router.push("/chat");
         }
       }
-    } else {
-      // For chat mode, go back to option page or chat
-      if (sessionId) {
-        router.push(`/option?sessionId=${sessionId}&mode=${mode || "chat"}`);
-      } else {
-        router.push("/chat");
-      }
+    } finally {
+      setIsProcessingSwipe(false);
     }
   };
 

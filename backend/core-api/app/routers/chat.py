@@ -176,7 +176,7 @@ async def chat(request: ChatRequest, db=Depends(get_database)):
             or (details_data.get("categories", [{}])[0].get("title") if details_data else None)
             or "Restaurant"
         )
-        
+        x = 5
         rating = float(biz_data.get("rating") or (details_data.get("rating") if details_data else 0) or 0)
         
         # Calculate distance
@@ -380,6 +380,4 @@ async def get_chat_history(db=Depends(get_database)):
         )
 
     return history
-
-
 

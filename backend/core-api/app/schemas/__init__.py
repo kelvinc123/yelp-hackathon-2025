@@ -17,6 +17,10 @@ class VoiceInputRequest(BaseModel):
     latitude: Optional[float] = Field(None, description="User latitude")
     longitude: Optional[float] = Field(None, description="User longitude")
     chat_id: Optional[str] = Field(None, description="Yelp AI chat_id for follow-up questions. If null, starts new conversation.")
+    voice: Optional[Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"]] = Field(
+        default="nova",
+        description="Voice for TTS response: alloy (neutral), echo (male), fable (British), onyx (deep male), nova (female), shimmer (female)"
+    )
 
 
 class SwipeAction(BaseModel):
@@ -28,12 +32,26 @@ class SwipeAction(BaseModel):
     )
 
 
-class ReservationRequest(BaseModel):
+class ReservationTextRequest(BaseModel):
     user_id: str = Field(default="user_123", description="User identifier")
-    restaurant_id: str = Field(..., description="Restaurant identifier")
-    party_size: int = Field(..., ge=1, le=20, description="Number of people")
-    reservation_time: datetime = Field(..., description="Desired reservation time")
-    special_requests: Optional[str] = Field(None, description="Special requests or notes")
+    chat_id: str = Field(..., description="Yelp AI chat_id from conversation")
+    yelp_business_id: str = Field(..., description="Yelp business identifier")
+    text: str = Field(..., description="Reservation request text, e.g., 'Make a reservation for 2 people at 7pm tonight'")
+    latitude: Optional[float] = Field(None, description="User latitude")
+    longitude: Optional[float] = Field(None, description="User longitude")
+
+
+class ReservationVoiceRequest(BaseModel):
+    user_id: str = Field(default="user_123", description="User identifier")
+    chat_id: str = Field(..., description="Yelp AI chat_id from conversation")
+    yelp_business_id: str = Field(..., description="Yelp business identifier")
+    audio_data: str = Field(..., description="Base64 encoded audio data")
+    latitude: Optional[float] = Field(None, description="User latitude")
+    longitude: Optional[float] = Field(None, description="User longitude")
+    voice: Optional[Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"]] = Field(
+        default="nova",
+        description="Voice for TTS response"
+    )
 
 
 class Restaurant(BaseModel):

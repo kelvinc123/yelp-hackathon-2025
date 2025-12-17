@@ -8,6 +8,7 @@ class TextPromptRequest(BaseModel):
     text: str = Field(..., description="User text input/prompt")
     latitude: Optional[float] = Field(None, description="User latitude")
     longitude: Optional[float] = Field(None, description="User longitude")
+    chat_id: Optional[str] = Field(None, description="Yelp AI chat_id for follow-up questions. If null, starts new conversation.")
 
 
 class VoiceInputRequest(BaseModel):
@@ -15,14 +16,15 @@ class VoiceInputRequest(BaseModel):
     audio_data: str = Field(..., description="Base64 encoded audio data")
     latitude: Optional[float] = Field(None, description="User latitude")
     longitude: Optional[float] = Field(None, description="User longitude")
+    chat_id: Optional[str] = Field(None, description="Yelp AI chat_id for follow-up questions. If null, starts new conversation.")
 
 
 class SwipeAction(BaseModel):
     user_id: str = Field(default="user_123", description="User identifier")
-    restaurant_id: str = Field(..., description="Restaurant identifier")
-    action: Literal["right", "left", "up", "down"] = Field(
+    yelp_business_id: str = Field(..., description="Business identifier")
+    action: Literal["right", "left"] = Field(
         ..., 
-        description="Swipe direction: right=yes, left=next, up=super_yes, down=never"
+        description="Swipe direction: right=yes, left=next"
     )
 
 

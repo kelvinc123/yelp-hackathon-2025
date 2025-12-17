@@ -87,7 +87,7 @@ CREATE TABLE user_swipes (
     user_id TEXT NOT NULL DEFAULT 'user_123',
     restaurant_id UUID REFERENCES restaurants_discovered(id) ON DELETE CASCADE,
     yelp_business_id TEXT NOT NULL,
-    action TEXT CHECK (action IN ('right', 'left', 'up', 'down')),
+    action TEXT CHECK (action IN ('right', 'left')),
     created_at TIMESTAMP DEFAULT NOW()
 );
 

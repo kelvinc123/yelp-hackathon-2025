@@ -47,4 +47,4 @@ jobs:
           --max-instances 1 \
           --project yes-or-next \
           --service-account 84243174586-compute@developer.gserviceaccount.com \
-          --set-env-vars MY_ENV=${{ env.MY_PROJECT_ENV }} \
+          --set-env-vars MY_ENV=${{ env.MY_PROJECT_ENV }},SUPABASE_URL=${{ secrets.SUPABASE_URL }},SUPABASE_KEY=${{ secrets.SUPABASE_KEY }},YELP_API_KEY=${{ secrets.YELP_API_KEY }},OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \

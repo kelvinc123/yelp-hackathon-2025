@@ -40,6 +40,7 @@ class ChatResponse(BaseModel):
     chatId: str
     message: str
     restaurant: Optional[Restaurant] = None
+    restaurants: Optional[List[Restaurant]] = None  # For multiple options
     sessionId: str
 
 
@@ -63,13 +64,13 @@ def haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float
     return 2 * R * math.asin(math.sqrt(a))
 
 
-def pick_one_business(yelp_json: dict):
-    """Extract the first business from Yelp AI response"""
+def pick_businesses(yelp_json: dict, limit: int = 3):
+    """Extract businesses from Yelp AI response (up to limit)"""
     businesses = []
     entities = yelp_json.get("entities", [])
     for entity in entities:
         businesses.extend(entity.get("businesses", []))
-    return businesses[0] if businesses else None
+    return businesses[:limit] if businesses else []
 
 
 @router.post("", response_model=ChatResponse)
@@ -99,7 +100,8 @@ async def chat(request: ChatRequest, db=Depends(get_database)):
     elif request.action == "next":
         query = "User wants to see another option. Recommend a different restaurant."
     else:
-        query = f"Recommend EXACTLY ONE restaurant.\nNo lists. No alternatives.\nKeep the 'why' to one sentence.\n\nUser: {request.message}"
+        # Request 3 restaurants for swipeable options
+        query = f"Recommend EXACTLY 3 restaurants that match the user's request.\nNo lists. No alternatives.\nKeep the 'why' to one sentence for each.\n\nUser: {request.message}"
     
     # Call Yelp AI Chat API using the service
     try:
@@ -161,28 +163,107 @@ async def chat(request: ChatRequest, db=Depends(get_database)):
         # Don't fail the chat if logging to DB fails
         pass
     
-    # Extract business and fetch details
+    # Extract businesses and fetch details
     restaurant = None
-    needs_details = False
-    business_id_to_fetch = request.businessId
-    biz = None
+    restaurants = None
     
-    if not business_id_to_fetch:
-        # New recommendation - extract business from Yelp AI response
-        biz = pick_one_business(yelp_json)
-        if biz and biz.get("id"):
-            business_id_to_fetch = biz["id"]
-            needs_details = True
-    else:
-        # We have a businessId (from "yes" action), try to get biz from Yelp AI response
-        biz = pick_one_business(yelp_json)
-        needs_details = True
+    # Helper function to build Restaurant object from business data
+    def build_restaurant(biz_data: dict, details_data: dict = None, include_contact: bool = False) -> Restaurant:
+        """Build a Restaurant object from business and details data"""
+        cuisine = (
+            biz_data.get("categories", [{}])[0].get("title")
+            or (details_data.get("categories", [{}])[0].get("title") if details_data else None)
+            or "Restaurant"
+        )
+        
+        rating = float(biz_data.get("rating") or (details_data.get("rating") if details_data else 0) or 0)
+        
+        # Calculate distance
+        distance = "Nearby"
+        if (
+            request.latitude is not None
+            and request.longitude is not None
+            and (biz_data.get("coordinates") or (details_data.get("coordinates") if details_data else None))
+        ):
+            coords = biz_data.get("coordinates") or (details_data.get("coordinates") if details_data else {})
+            if coords.get("latitude") and coords.get("longitude"):
+                lat = coords["latitude"]
+                lon = coords["longitude"]
+                miles = haversine_miles(request.latitude, request.longitude, lat, lon)
+                distance = f"{miles:.1f} mi" if miles < 10 else f"{miles:.0f} mi"
+        
+        # Time status
+        time = "Check hours"
+        if details_data:
+            hours = details_data.get("hours", [])
+            is_open_now = hours[0].get("is_open_now") if hours else None
+            if isinstance(is_open_now, bool):
+                time = "Open now" if is_open_now else "Closed now"
+        
+        # Get ai_insight from business summaries
+        summaries = biz_data.get("summaries", {})
+        summary = summaries.get("short") if summaries else None
+        if not summary:
+            summary = "Great match for your vibe."
+        
+        # Get image URL - prioritize from business entity, then details API
+        image_url = None
+        
+        # First try: Get from business entity contextual_info photos (Yelp AI response)
+        contextual_info = biz_data.get("contextual_info", {})
+        photos = contextual_info.get("photos", [])
+        if photos and len(photos) > 0:
+            if isinstance(photos[0], dict):
+                image_url = photos[0].get("original_url")
+            elif isinstance(photos[0], str):
+                image_url = photos[0]
+        
+        # Second try: Get from details API image_url
+        if not image_url and details_data:
+            image_url = details_data.get("image_url")
+        
+        # Third try: Get from details API photos array
+        if not image_url and details_data:
+            details_photos = details_data.get("photos", [])
+            if details_photos and len(details_photos) > 0:
+                if isinstance(details_photos[0], str):
+                    image_url = details_photos[0]
+                elif isinstance(details_photos[0], dict):
+                    image_url = details_photos[0].get("url") or details_photos[0].get("original_url")
+        
+        price = biz_data.get("price") or (details_data.get("price") if details_data else "") or ""
+        vibes = [cuisine, price, "Top rated" if rating >= 4.5 else ""]
+        vibes = [v for v in vibes if v][:3]
+        
+        business_id = biz_data.get("id") or (details_data.get("id") if details_data else "")
+        
+        return Restaurant(
+            id=business_id,
+            name=biz_data.get("name") or (details_data.get("name") if details_data else "Restaurant") or "Restaurant",
+            cuisine=cuisine,
+            rating=rating,
+            distance=distance,
+            time=time,
+            summary=summary,
+            imageUrl=image_url,
+            vibes=vibes,
+            address=(
+                ", ".join(details_data.get("location", {}).get("display_address", []))
+                if include_contact and details_data else None
+            ),
+            phone=(
+                details_data.get("display_phone") or details_data.get("phone")
+                if include_contact and details_data else None
+            ),
+            url=details_data.get("url") if details_data else None,
+        )
     
-    if needs_details and business_id_to_fetch:
-        # Fetch business details for image, address, phone, hours
+    # Handle different action types
+    if request.action == "yes" and request.businessId:
+        # User confirmed a restaurant - fetch full details
         try:
             details_response = requests.get(
-                f"https://api.yelp.com/v3/businesses/{business_id_to_fetch}",
+                f"https://api.yelp.com/v3/businesses/{request.businessId}",
                 headers={"Authorization": f"Bearer {yelp_service.api_key}"},
                 timeout=30
             )
@@ -191,99 +272,58 @@ async def chat(request: ChatRequest, db=Depends(get_database)):
         except requests.exceptions.RequestException:
             details = None
         
-        if details:
-            # Use biz from Yelp AI if available, otherwise use details
-            if not biz:
-                biz = details
+        biz = pick_businesses(yelp_json, limit=1)
+        biz_data = biz[0] if biz else {}
+        restaurant = build_restaurant(biz_data, details, include_contact=True)
+    
+    elif request.action == "next":
+        # User wants next option - return single restaurant
+        biz_list = pick_businesses(yelp_json, limit=1)
+        if biz_list:
+            biz_data = biz_list[0]
+            business_id = biz_data.get("id")
+            if business_id:
+                try:
+                    details_response = requests.get(
+                        f"https://api.yelp.com/v3/businesses/{business_id}",
+                        headers={"Authorization": f"Bearer {yelp_service.api_key}"},
+                        timeout=30
+                    )
+                    details_response.raise_for_status()
+                    details = details_response.json()
+                except requests.exceptions.RequestException:
+                    details = None
+                
+                restaurant = build_restaurant(biz_data, details, include_contact=False)
+    
+    else:
+        # New query - return 3 restaurants for swipeable options
+        biz_list = pick_businesses(yelp_json, limit=3)
+        if biz_list:
+            restaurants_list = []
+            for biz_data in biz_list:
+                business_id = biz_data.get("id")
+                if business_id:
+                    try:
+                        details_response = requests.get(
+                            f"https://api.yelp.com/v3/businesses/{business_id}",
+                            headers={"Authorization": f"Bearer {yelp_service.api_key}"},
+                            timeout=30
+                        )
+                        details_response.raise_for_status()
+                        details = details_response.json()
+                    except requests.exceptions.RequestException:
+                        details = None
+                    
+                    rest = build_restaurant(biz_data, details, include_contact=False)
+                    restaurants_list.append(rest)
             
-            cuisine = (
-                biz.get("categories", [{}])[0].get("title")
-                or details.get("categories", [{}])[0].get("title")
-                or "Restaurant"
-            )
-            
-            rating = float(biz.get("rating") or details.get("rating") or 0)
-            
-            # Calculate distance
-            distance = "Nearby"
-            if (
-                request.latitude is not None
-                and request.longitude is not None
-                and (biz.get("coordinates") or details.get("coordinates"))
-            ):
-                coords = biz.get("coordinates") or details.get("coordinates")
-                if coords.get("latitude") and coords.get("longitude"):
-                    lat = coords["latitude"]
-                    lon = coords["longitude"]
-                    miles = haversine_miles(request.latitude, request.longitude, lat, lon)
-                    distance = f"{miles:.1f} mi" if miles < 10 else f"{miles:.0f} mi"
-            
-            # Time status
-            hours = details.get("hours", [])
-            is_open_now = hours[0].get("is_open_now") if hours else None
-            if isinstance(is_open_now, bool):
-                time = "Open now" if is_open_now else "Closed now"
-            else:
-                time = "Check hours"
-            
-            # Get ai_insight from business summaries
-            summaries = biz.get("summaries", {})
-            summary = summaries.get("short") if summaries else None
-            if not summary:
-                summary = "Great match for your vibe."
-            
-            # Get image URL - prioritize from business entity, then details API
-            image_url = None
-            
-            # First try: Get from business entity contextual_info photos (Yelp AI response)
-            if biz:
-                contextual_info = biz.get("contextual_info", {})
-                photos = contextual_info.get("photos", [])
-                if photos and len(photos) > 0:
-                    # Photos are objects with original_url
-                    if isinstance(photos[0], dict):
-                        image_url = photos[0].get("original_url")
-                    elif isinstance(photos[0], str):
-                        image_url = photos[0]
-            
-            # Second try: Get from details API image_url
-            if not image_url and details:
-                image_url = details.get("image_url")
-            
-            # Third try: Get from details API photos array
-            if not image_url and details:
-                details_photos = details.get("photos", [])
-                if details_photos and len(details_photos) > 0:
-                    # Photos can be URLs or objects
-                    if isinstance(details_photos[0], str):
-                        image_url = details_photos[0]
-                    elif isinstance(details_photos[0], dict):
-                        image_url = details_photos[0].get("url") or details_photos[0].get("original_url")
-            
-            price = biz.get("price") or details.get("price") or ""
-            vibes = [cuisine, price, "Top rated" if rating >= 4.5 else ""]
-            vibes = [v for v in vibes if v][:3]
-            
-            restaurant = Restaurant(
-                id=business_id_to_fetch,
-                name=biz.get("name") or details.get("name") or "Restaurant",
-                cuisine=cuisine,
-                rating=rating,
-                distance=distance,
-                time=time,
-                summary=summary,
-                imageUrl=image_url,
-                vibes=vibes,
-                address=(
-                    ", ".join(details.get("location", {}).get("display_address", []))
-                    if request.action == "yes" else None
-                ),
-                phone=(
-                    details.get("display_phone") or details.get("phone")
-                    if request.action == "yes" else None
-                ),
-                url=details.get("url"),
-            )
+            if restaurants_list:
+                restaurants = restaurants_list
+    
+    # Legacy single restaurant support (for backward compatibility)
+    if not restaurant and restaurants and len(restaurants) > 0:
+        restaurant = restaurants[0]
     
     session_id = request.sessionId or str(uuid.uuid4())
     
@@ -291,6 +331,7 @@ async def chat(request: ChatRequest, db=Depends(get_database)):
         chatId=new_chat_id or "",
         message=response_text,
         restaurant=restaurant,
+        restaurants=restaurants,
         sessionId=session_id
     )
 

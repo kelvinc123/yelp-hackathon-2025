@@ -277,7 +277,6 @@ export default function ChatInterface({}: ChatInterfaceProps) {
         </div>
       </div>
 
-      {/* BottomNavigation - Already fixed in component itself */}
       <BottomNavigation />
     </div>
   );

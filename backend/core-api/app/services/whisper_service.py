@@ -66,7 +66,7 @@ class WhisperService:
 
 
 class OpenAIWhisperService:
-    def __init__(self, model_name: str = "gpt-4o-mini-transcribe", tts_model: str = "tts-1"):
+    def __init__(self, model_name: str = "whisper-1", tts_model: str = "gpt-4o-mini-tts"):
         self.model_name = model_name
         self.tts_model = tts_model
         api_key = os.getenv("OPENAI_API_KEY")
@@ -116,21 +116,31 @@ class OpenAIWhisperService:
     def text_to_speech(
         self,
         text: str,
-        voice: str = "alloy"
+        voice: str = "coral",
+        instructions: Optional[str] = None,
+        response_format: str = "mp3"
     ) -> bytes:
         """
         Convert text to speech using OpenAI TTS.
         
-        Available voices: alloy, echo, fable, onyx, nova, shimmer
+        Available voices: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer
+        Model: gpt-4o-mini-tts
         """
         try:
-            logger.info(f"Converting text to speech: {len(text)} characters")
+            logger.info(f"Converting text to speech: {len(text)} characters, voice: {voice}")
             
-            response = self.client.audio.speech.create(
-                model=self.tts_model,
-                voice=voice,
-                input=text
-            )
+            # Build base parameters
+            params = {
+                "model": self.tts_model,
+                "voice": voice,
+                "input": text,
+            }
+            
+            # Add response_format if specified
+            if response_format:
+                params["response_format"] = response_format
+            
+            response = self.client.audio.speech.create(**params)
             
             audio_bytes = response.content
             
@@ -139,8 +149,12 @@ class OpenAIWhisperService:
             return audio_bytes
             
         except Exception as e:
-            logger.error(f"TTS conversion failed: {e}")
-            raise
+            error_msg = str(e)
+            logger.error(f"TTS conversion failed: {error_msg}")
+            # Provide more detailed error information
+            if "messages" in error_msg.lower():
+                raise ValueError(f"OpenAI TTS API error - incorrect format. Error: {error_msg}")
+            raise ValueError(f"TTS conversion failed: {error_msg}")
 
 
 _whisper_service: Optional[WhisperService] = None

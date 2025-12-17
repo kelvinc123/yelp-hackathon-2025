@@ -214,7 +214,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       // When user confirms "Yes", update restaurant with full details (phone, URL, address)
       if (action === "yes") {
         if (data.restaurant) {
-          // Use the restaurant from API response which includes full contact details
+          // Use the restaurant from API response
           setSelectedRestaurant(data.restaurant);
         }
         setAwaitingChoice(true);
@@ -319,7 +319,7 @@ export default function ChatInterface({}: ChatInterfaceProps) {
       // Add helpful AI message
       const helpMessage: Message = {
         id: Date.now().toString(),
-        text: "Great! I'll help you make a reservation. First, select your preferred date and time below. Then you can book directly on Yelp or call the restaurant.",
+        text: "Awesome! Let's get your reservation set up. Choose your desired date and time below, then you can book on Yelp or contact the restaurant directly.",
         sender: "ai",
         timestamp: new Date(),
       };
